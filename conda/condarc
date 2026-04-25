@@ -1,0 +1,26 @@
+# ~/.condarc
+
+channels:
+
+- conda-forge
+
+channel_priority: strict
+solver: libmamba
+
+auto_activate_base: false
+show_channel_urls: true
+always_yes: false
+
+env_prompt: '({name})'
+
+envs_dirs:
+
+- /home/USER/tools/miniforge3/envs
+
+pkgs_dirs:
+
+- /home/USER/tools/miniforge3/pkgs
+
+quiet: false
+safety_checks: warn
+ssl_verify: true

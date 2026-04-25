@@ -1,0 +1,16 @@
+# ============================================================================
+# ~/.gitconfig.local — NOT committed.
+# Copy this file to ~/.gitconfig.local and fill in your identity.
+# ============================================================================
+
+[user]
+	name = Michalis Chadolias
+	email = mchadolias@gmail.com
+	signingkey = 65E10A75223DA0D4 
+
+[commit]
+	gpgsign = true
+
+# Per-directory overrides — great for separating work/personal identities.
+# [includeIf "gitdir:~/work/"]
+# 	path = ~/.gitconfig-work

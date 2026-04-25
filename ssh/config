@@ -1,0 +1,37 @@
+# Public SSH config
+
+## Personal hosts (usernames, internal hostnames) live in ~/.ssh/config.local
+
+Include ~/.ssh/config.local
+
+## Global defaults
+
+Host *
+ ServerAliveInterval 60
+ ServerAliveCountMax 3
+ HashKnownHosts yes
+ AddKeysToAgent yes
+ ControlMaster auto
+ ControlPersist 10m
+
+## Public git forges — identity files only, no usernames
+
+Host github.com
+ User git
+ PreferredAuthentications publickey
+ IdentityFile ~/.ssh/personal_github
+ IdentitiesOnly yes
+
+## KM3NeT GitLab
+
+Host git.km3net.de
+ User git
+ PreferredAuthentications publickey
+ IdentityFile ~/.ssh/km3net_gitlab
+ IdentitiesOnly yes
+
+Host hf.co
+ HostName hf.co
+ User git
+ IdentityFile ~/.ssh/huggingface
+ IdentitiesOnly yes

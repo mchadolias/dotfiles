@@ -1,0 +1,91 @@
+# ============================================================================
+# ~/.zshrc — INTERACTIVE shells only.
+# This file is universal. Heavy / environment-specific tool init
+# (conda, mamba, julia, fastfetch, kitty integration, etc.) lives in
+# $DOTFILES/shell/profiles/${DOTFILES_PROFILE}.zsh.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. Universal aliases
+# ----------------------------------------------------------------------------
+DOTFILES="$HOME/dotfiles"
+export DOTFILES
+[[ -r "$DOTFILES/shell/aliases.sh" ]] && source "$DOTFILES/shell/aliases.sh"
+
+# ----------------------------------------------------------------------------
+# 2. Completion (must precede plugins that register completions)
+# ----------------------------------------------------------------------------
+autoload -Uz compinit
+compinit -d "$XDG_CACHE_HOME/zsh/.zcompdump"
+
+# ----------------------------------------------------------------------------
+# 3. Modular config drop-in directory
+# Anything in $ZDOTDIR/env.d/*.zsh gets sourced. Useful for one-off
+# additions you don't want in the main file.
+# ----------------------------------------------------------------------------
+if [[ -d "$ZDOTDIR/env.d" ]]; then
+	for f in "$ZDOTDIR/env.d"/*.zsh(N); do
+		[[ -r "$f" ]] && source "$f"
+	done
+fi
+
+# ----------------------------------------------------------------------------
+# 4. Prompt — Starship (deferred so compinit finishes first)
+# ----------------------------------------------------------------------------
+if command -v starship >/dev/null 2>&1; then
+	autoload -Uz add-zsh-hook
+	_starship_init_once() {
+		eval "$(starship init zsh)"
+		add-zsh-hook -d precmd _starship_init_once
+		unset -f _starship_init_once
+	}
+	add-zsh-hook precmd _starship_init_once
+fi
+
+# ----------------------------------------------------------------------------
+# 5. zoxide — `j` for jump, leaves `cd` untouched
+# ----------------------------------------------------------------------------
+if command -v zoxide >/dev/null 2>&1; then
+	eval "$(zoxide init zsh --cmd j)"
+fi
+
+# ----------------------------------------------------------------------------
+# 6. Universal helper functions
+# ----------------------------------------------------------------------------
+mkcd() { mkdir -p -- "$1" && cd -- "$1"; }
+
+# Yazi: cd into the directory yazi exits in.
+y() {
+	local tmp cwd
+	tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+	command yazi "$@" --cwd-file="$tmp"
+	IFS= read -r -d '' cwd < "$tmp"
+	[[ -n "$cwd" && "$cwd" != "$PWD" && -d "$cwd" ]] && builtin cd -- "$cwd"
+	rm -f -- "$tmp"
+}
+
+# ----------------------------------------------------------------------------
+# 7. Profile dispatch
+# ----------------------------------------------------------------------------
+# DOTFILES_PROFILE selects which environment-specific file to load.
+# Defaults to "personal" — set DOTFILES_PROFILE=cluster in ~/.zshrc.local
+# (or in the cluster repo's install) to switch.
+#
+# DOTFILES_OVERLAY (optional) points at a second repo (e.g. dotfiles-cluster)
+# that can provide its own profile file. Overlay wins over base.
+DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
+
+for _base in "${DOTFILES_OVERLAY:-}" "$DOTFILES"; do
+	[[ -z "$_base" ]] && continue
+	_profile_file="$_base/shell/profiles/${DOTFILES_PROFILE}.zsh"
+	if [[ -r "$_profile_file" ]]; then
+		source "$_profile_file"
+		break
+	fi
+done
+unset _base _profile_file
+
+# ----------------------------------------------------------------------------
+# 8. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
+# ----------------------------------------------------------------------------
+[[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"

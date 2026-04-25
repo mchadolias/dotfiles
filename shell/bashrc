@@ -1,0 +1,66 @@
+# ============================================================================
+# ~/.bashrc — interactive bash config.
+# Keep in sync with zsh where it matters, but don't fight bash-specific habits.
+# ============================================================================
+
+# Only in interactive shells
+case $- in
+	*i*) ;;
+	  *) return;;
+esac
+
+# History tuning
+HISTCONTROL=ignoreboth:erasedups
+HISTSIZE=10000
+HISTFILESIZE=20000
+shopt -s histappend checkwinsize
+
+# Colour prompt if the terminal supports it
+case "$TERM" in
+	xterm-color|*-256color|xterm-kitty) color_prompt=yes;;
+esac
+if [ "${color_prompt:-}" = yes ]; then
+	PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
+else
+	PS1='\u@\h:\w\$ '
+fi
+
+# Aliases — same file used by zsh
+: "${DOTFILES:=$HOME/dotfiles}"
+[ -f "$DOTFILES/shell/aliases.sh" ] && . "$DOTFILES/shell/aliases.sh"
+
+# bash completion
+if ! shopt -oq posix; then
+	if [ -f /usr/share/bash-completion/bash_completion ]; then
+		. /usr/share/bash-completion/bash_completion
+	elif [ -f /etc/bash_completion ]; then
+		. /etc/bash_completion
+	fi
+fi
+
+# Starship (same prompt across shells)
+if command -v starship >/dev/null 2>&1; then
+	eval "$(starship init bash)"
+fi
+
+# zoxide — `j` to jump, leave `cd` untouched
+if command -v zoxide >/dev/null 2>&1; then
+	eval "$(zoxide init bash --cmd j)"
+fi
+
+# >>> conda initialize >>>
+__conda_setup="$("$HOME/tools/miniforge3/bin/conda" 'shell.bash' 'hook' 2>/dev/null)"
+if [ $? -eq 0 ]; then
+	eval "$__conda_setup"
+else
+	if [ -f "$HOME/tools/miniforge3/etc/profile.d/conda.sh" ]; then
+		. "$HOME/tools/miniforge3/etc/profile.d/conda.sh"
+	else
+		export PATH="$HOME/tools/miniforge3/bin:$PATH"
+	fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Local overrides
+[ -f "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"

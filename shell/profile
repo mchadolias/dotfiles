@@ -1,0 +1,30 @@
+# ============================================================================
+# ~/.profile — shell-agnostic login config.
+# Loaded by bash/sh/dash on login. Zsh uses .zprofile instead.
+# ============================================================================
+
+# User-level bin directories
+[ -d "$HOME/.local/bin" ] && PATH="$HOME/.local/bin:$PATH"
+[ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
+export PATH
+
+# Editor / pager / locale
+export EDITOR=vim
+export VISUAL=vim
+export PAGER=less
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# XDG (for tools that read this before .zshenv)
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
+# Keep GPG state under XDG
+export GNUPGHOME="$XDG_DATA_HOME/gnupg"
+
+# Source bashrc when we're an interactive bash login shell
+if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+fi

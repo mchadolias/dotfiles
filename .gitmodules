@@ -1,0 +1,3 @@
+[submodule "kitty/tokyo_theme"]
+	path = kitty/tokyo_theme
+	url = https://github.com/folke/tokyonight.nvim

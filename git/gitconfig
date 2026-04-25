@@ -1,0 +1,57 @@
+# ============================================================================
+# Public .gitconfig — safe to commit.
+# User identity lives in ~/.gitconfig.local (not committed).
+# Apply with:  ln -s <repo>/git/gitconfig ~/.gitconfig
+# ============================================================================
+
+[include]
+	# Machine-local identity & overrides. Must exist or git warns on first use.
+	path = ~/dotfiles/git/config.local
+
+[core]
+	editor = vim
+	autocrlf = input
+	pager = less -FRX
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = false
+
+[push]
+	default = simple
+	autoSetupRemote = true
+
+[fetch]
+	prune = true
+
+[rebase]
+	autoStash = true
+
+[merge]
+	conflictStyle = zdiff3
+
+[diff]
+	algorithm = histogram
+	colorMoved = default
+
+[color]
+	ui = auto
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+
+# Quality-of-life aliases
+[alias]
+	st = status -sb
+	co = checkout
+	br = branch
+	ci = commit
+	last = log -1 HEAD --stat
+	lg = log --graph --oneline --decorate --all
+	unstage = reset HEAD --
+	amend = commit --amend --no-edit

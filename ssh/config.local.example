@@ -1,0 +1,45 @@
+# ============================================================================
+# ~/.ssh/config.local — NOT committed.
+# Copy to ~/.ssh/config.local and edit for your accounts/hosts.
+#
+# Run once to create the socket dir used by ControlPath:
+#   mkdir -p ~/.ssh/sockets && chmod 700 ~/.ssh/sockets
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# IFIC Gluon cluster
+# ----------------------------------------------------------------------------
+Host glui1
+	HostName glui01.ific.uv.es
+Host glui2
+	HostName glui02.ific.uv.es
+
+Host glui*
+	User mchadoli
+	IdentitiesOnly yes
+	IdentityFile ~/.ssh/ific_gluon_cc
+
+# ----------------------------------------------------------------------------
+# CC-IN2P3 Lyon (Kerberos/GSSAPI)
+# ----------------------------------------------------------------------------
+Host cca
+	HostName cca.in2p3.fr
+Host cca1
+	HostName cca001.in2p3.fr
+Host cca5
+	HostName cca005.in2p3.fr
+Host cca8
+	HostName cca008.in2p3.fr
+Host cca11
+	HostName cca011.in2p3.fr
+Host cca19
+	HostName cca019.in2p3.fr
+
+Host cc*
+	User                      mchadoli
+	GSSAPIClientIdentity      mchadoli@CC.IN2P3.FR
+	GSSAPIAuthentication      yes
+	GSSAPIDelegateCredentials yes
+	GSSAPITrustDns            yes
+	CheckHostIP               no
+	UserKnownHostsFile        ~/.ssh/known_hosts.local ~/.ssh/known_hosts

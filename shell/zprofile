@@ -1,0 +1,77 @@
+# ============================================================================
+# ~/.zprofile — LOGIN shells only. Environment, PATH, agents.
+# Interactive config belongs in .zshrc. Conda init lives there too.
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. Ensure state/cache dirs exist (created once per login)
+# ----------------------------------------------------------------------------
+mkdir -p "$XDG_STATE_HOME/zsh" "$XDG_CACHE_HOME/zsh"
+
+# ----------------------------------------------------------------------------
+# 2. PATH — unique entries, prepended in priority order
+# ----------------------------------------------------------------------------
+typeset -U path PATH
+
+path=(
+	"$HOME/.local/bin"
+	"$HOME/bin"
+	"$HOME/.cargo/bin"
+	"/usr/local/bin"
+	$path
+)
+
+# ----------------------------------------------------------------------------
+# 3. Language toolchains
+# ----------------------------------------------------------------------------
+
+# Rust (cargo env sets up PATH for rustup shims)
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+# Go
+export GOPATH="${GOPATH:-$HOME/go}"
+export GOBIN="$GOPATH/bin"
+path+=("$GOBIN")
+
+export PATH
+
+
+# ----------------------------------------------------------------------------
+# 4. GPG agent — only set GPG_TTY when we actually have a tty
+# ----------------------------------------------------------------------------
+if command -v gpgconf >/dev/null 2>&1; then
+	gpgconf --launch gpg-agent >/dev/null 2>&1 || true
+	if [ -t 0 ]; then
+		export GPG_TTY=$(tty)
+	fi
+fi
+
+# ----------------------------------------------------------------------------
+# 5. Export selected variables to the systemd user environment
+# ----------------------------------------------------------------------------
+if command -v systemctl >/dev/null 2>&1 && systemctl --user >/dev/null 2>&1; then
+	systemctl --user import-environment \
+		PATH LANG SSH_AUTH_SOCK GPG_TTY \
+		XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME XDG_STATE_HOME
+fi
+
+# ----------------------------------------------------------------------------
+# 6. Pager / tool env vars
+# ----------------------------------------------------------------------------
+export LESSHISTFILE="-"
+export LESS="-R"
+
+export BAT_THEME="TwoDark"
+export RIPGREP_CONFIG_PATH="$XDG_CONFIG_HOME/ripgrep/config"
+
+export FZF_DEFAULT_OPTS="
+	--height 40%
+	--border
+	--ansi
+	--preview 'bat --style=numbers --color=always {} || head -100 {}'
+"
+
+# ----------------------------------------------------------------------------
+# 7. Machine-specific overrides
+# ----------------------------------------------------------------------------
+[[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"
