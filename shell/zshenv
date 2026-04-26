@@ -15,3 +15,6 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 # Tell zsh where to find .zshrc / .zprofile / .zlogin
 export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+
+# Set up dotfiles path 
+export DOTFILES="${DOTFILES:=$HOME/dotfiles}" 

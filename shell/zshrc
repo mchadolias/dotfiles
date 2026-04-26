@@ -8,7 +8,8 @@
 # ----------------------------------------------------------------------------
 # 1. Universal aliases
 # ----------------------------------------------------------------------------
-: "${DOTFILES:= pwd}"  # set DOTFILES to current dir if not already set by env or parent shell
+# Load DOTFILES var from zshenv, then aliases (shared with bash) from a separate file.
+DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 [[ -r "$DOTFILES/shell/aliases.sh" ]] && source "$DOTFILES/shell/aliases.sh"
 
 # ----------------------------------------------------------------------------
