@@ -1,0 +1,264 @@
+# ============================================================================
+#  Starship prompt configuration
+#  Theme:    Tokyo Night Moon  (matches kitty/tmux/neovim)
+#  Font:     MesloLGS NF  (Nerd Font glyphs enabled)
+#  Layout:   Two-line prompt, right-side time, transient-friendly
+#  Tailored: Python/conda+mamba, Rust, Go, Julia, git, SSH-aware
+# ============================================================================
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+# ----------------------------------------------------------------------------
+#  Global behaviour
+# ----------------------------------------------------------------------------
+add_newline       = true
+command_timeout   = 1000          # ms; bumps default 500ms — helps on NFS/cluster mounts
+scan_timeout      = 30
+follow_symlinks   = true
+
+# ----------------------------------------------------------------------------
+#  Prompt format — left side
+#  Order matters; modules render left → right on the first line.
+# ----------------------------------------------------------------------------
+format = """
+[╭─](fg:overlay)$os\
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$git_state\
+$fill\
+$python\
+$conda\
+$rust\
+$golang\
+$julia\
+$nodejs\
+$docker_context\
+$cmd_duration\
+$jobs\
+$status
+[╰─](fg:overlay)$character"""
+
+right_format = """$time"""
+
+# ----------------------------------------------------------------------------
+#  Tokyo Night Moon palette
+#  https://github.com/folke/tokyonight.nvim (moon variant)
+# ----------------------------------------------------------------------------
+palette = "tokyonight_moon"
+
+[palettes.tokyonight_moon]
+bg          = "#222436"
+bg_highlight= "#2f334d"
+overlay     = "#444a73"
+fg          = "#c8d3f5"
+fg_dim      = "#828bb8"
+blue        = "#82aaff"
+cyan        = "#86e1fc"
+teal        = "#4fd6be"
+green       = "#c3e88d"
+yellow      = "#ffc777"
+orange      = "#ff966c"
+red         = "#ff757f"
+magenta     = "#c099ff"
+purple      = "#fca7ea"
+git         = "#ff966c"
+
+# ----------------------------------------------------------------------------
+#  Filler — pushes right-side modules to the edge
+# ----------------------------------------------------------------------------
+[fill]
+symbol = " "
+
+# ----------------------------------------------------------------------------
+#  OS / user / host
+#  Username + hostname only show when meaningful (SSH / root).
+# ----------------------------------------------------------------------------
+[os]
+disabled = false
+format   = "[$symbol ]($style)"
+style    = "fg:blue"
+
+[os.symbols]
+Ubuntu     = ""
+Debian     = ""
+Arch       = "󰣇"
+Fedora     = ""
+Macos      = ""
+Linux      = ""
+Windows    = ""
+
+[username]
+show_always = false
+format      = "[$user]($style)[@](fg:overlay)"
+style_user  = "fg:magenta bold"
+style_root  = "fg:red bold"
+
+[hostname]
+ssh_only        = true
+ssh_symbol      = "󰣀 "
+format          = "[$ssh_symbol$hostname]($style) "
+style           = "fg:purple bold"
+trim_at         = "."
+disabled        = false
+
+# ----------------------------------------------------------------------------
+#  Directory
+# ----------------------------------------------------------------------------
+[directory]
+format              = "[ $path]($style)[$read_only]($read_only_style) "
+style               = "fg:blue bold"
+read_only           = " 󰌾"
+read_only_style     = "fg:red"
+truncation_length   = 4
+truncation_symbol   = "…/"
+truncate_to_repo    = true
+home_symbol         = "~"
+
+[directory.substitutions]
+"projects"  = "󰲋 projects"
+"Documents" = " Documents"
+"Downloads" = " Downloads"
+"dotfiles"  = " dotfiles"
+"tools"     = "󰒓 tools"
+
+# ----------------------------------------------------------------------------
+#  Git
+# ----------------------------------------------------------------------------
+[git_branch]
+symbol               = " "
+format               = "[on ](fg:fg_dim)[$symbol$branch]($style) "
+style                = "fg:git bold"
+truncation_length    = 30
+truncation_symbol    = "…"
+
+[git_status]
+format            = "([$all_status$ahead_behind]($style)) "
+style             = "fg:yellow"
+conflicted        = "[ ](fg:red)"
+ahead             = "[⇡${count} ](fg:green)"
+behind            = "[⇣${count} ](fg:cyan)"
+diverged          = "[⇕⇡${ahead_count}⇣${behind_count} ](fg:magenta)"
+up_to_date        = ""
+untracked         = "[? ](fg:fg_dim)"
+stashed           = "[ ](fg:purple)"
+modified          = "[! ](fg:yellow)"
+staged            = "[+ ](fg:green)"
+renamed           = "[» ](fg:blue)"
+deleted           = "[✘ ](fg:red)"
+
+[git_state]
+format            = "[\\($state( $progress_current/$progress_total)\\)]($style) "
+style             = "fg:orange bold"
+rebase            = "REBASING"
+merge             = "MERGING"
+revert            = "REVERTING"
+cherry_pick       = "CHERRY-PICKING"
+bisect            = "BISECTING"
+am                = "AM"
+am_or_rebase      = "AM/REBASE"
+
+# ----------------------------------------------------------------------------
+#  Languages — only show when relevant files are nearby
+# ----------------------------------------------------------------------------
+[python]
+symbol            = " "
+format            = "[\\[$symbol(${version})( \\($virtualenv\\))\\]]($style) "
+style             = "fg:yellow"
+version_format    = "${raw}"
+detect_extensions = ["py", "ipynb"]
+detect_files      = ["pyproject.toml", "requirements.txt", "setup.py", "Pipfile", "tox.ini", "uv.lock", ".python-version"]
+python_binary     = ["python", "python3"]
+
+[conda]
+symbol            = " "
+format            = "[\\[$symbol$environment\\]]($style) "
+style             = "fg:green"
+ignore_base       = true                # never show "base" — your condarc auto_activate_base=false anyway
+truncation_length = 2
+
+[rust]
+symbol            = " "
+format            = "[\\[$symbol(${version})\\]]($style) "
+style             = "fg:orange"
+version_format    = "${raw}"
+
+[golang]
+symbol            = " "
+format            = "[\\[$symbol(${version})\\]]($style) "
+style             = "fg:cyan"
+version_format    = "${raw}"
+
+[julia]
+symbol            = " "
+format            = "[\\[$symbol(${version})\\]]($style) "
+style             = "fg:magenta"
+version_format    = "${raw}"
+
+[nodejs]
+symbol            = " "
+format            = "[\\[$symbol(${version})\\]]($style) "
+style             = "fg:green"
+version_format    = "${raw}"
+detect_files      = ["package.json", ".nvmrc"]
+disabled          = false
+
+# ----------------------------------------------------------------------------
+#  Containers / context
+# ----------------------------------------------------------------------------
+[docker_context]
+symbol = " "
+format = "[\\[$symbol$context\\]]($style) "
+style  = "fg:blue"
+only_with_files = true
+
+# ----------------------------------------------------------------------------
+#  Runtime info
+# ----------------------------------------------------------------------------
+[cmd_duration]
+min_time           = 2_000          # ms
+format             = "[ $duration]($style) "
+style              = "fg:yellow"
+show_milliseconds  = false
+
+[jobs]
+symbol             = "✦ "
+format             = "[$symbol$number]($style) "
+style              = "fg:purple bold"
+number_threshold   = 1
+symbol_threshold   = 1
+
+[status]
+disabled           = false
+format             = "[$symbol$common_meaning$signal_name$maybe_int]($style) "
+style              = "fg:red bold"
+symbol             = " "
+success_symbol     = ""
+not_executable_symbol = "🚫"
+not_found_symbol   = "󱎘"
+sigint_symbol      = "🧱"
+recognize_signal_code = true
+map_symbol         = true
+
+# ----------------------------------------------------------------------------
+#  Time (right prompt)
+# ----------------------------------------------------------------------------
+[time]
+disabled           = false
+format             = "[ $time ]($style)"
+style              = "fg:fg_dim"
+time_format        = "%H:%M"
+use_12hr           = false
+
+# ----------------------------------------------------------------------------
+#  Character — the actual prompt symbol
+# ----------------------------------------------------------------------------
+[character]
+success_symbol = "[](fg:green bold)"
+error_symbol   = "[](fg:red bold)"
+vimcmd_symbol  = "[](fg:green bold)"
+vimcmd_replace_one_symbol = "[](fg:purple bold)"
+vimcmd_replace_symbol     = "[](fg:purple bold)"
+vimcmd_visual_symbol      = "[](fg:yellow bold)"

@@ -10,8 +10,6 @@ auto_activate_base: false
 show_channel_urls: true
 always_yes: false
 
-env_prompt: '({name})'
-
 envs_dirs:
 - /home/$USER/tools/miniforge3/envs
 - $WORK/software/private/conda/envs

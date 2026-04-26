@@ -103,6 +103,11 @@ link "$DOTFILES/ssh/config" "$HOME/.ssh/config"
 run mkdir -p "$HOME/.ssh/sockets"
 run chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" 2>/dev/null || true
 
+# Starship
+if command -v starship >/dev/null 2>&1; then
+	link "$DOTFILES/starship/starship.toml" "$XDG_CONFIG_HOME/starship/starship.toml"
+fi
+
 # Kitty (only if kitty exists — skip on headless machines)
 if command -v kitty >/dev/null 2>&1; then
 	link "$DOTFILES/kitty/kitty.conf" "$XDG_CONFIG_HOME/kitty/kitty.conf"

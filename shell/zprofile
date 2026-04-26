@@ -61,6 +61,10 @@ fi
 export LESSHISTFILE="-"
 export LESS="-R"
 
+# Starship prompt — custom config + cache locations (XDG)
+export STARSHIP_CONFIG="$XDG_CONFIG_HOME/starship/starship.toml"
+export STARSHIP_CACHE="$XDG_CACHE_HOME/starship"
+
 export BAT_THEME="TwoDark"
 export RIPGREP_CONFIG_PATH="$XDG_CONFIG_HOME/ripgrep/config"
 
