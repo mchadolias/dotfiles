@@ -73,10 +73,6 @@ if command -v yazi >/dev/null 2>&1; then
 	alias yazi='yazi --config "$XDG_CONFIG_HOME/yazi/config.yaml"'
 fi
 
-if command -v starship >/dev/null 2>&1; then
-	alias starship='starship --config "$XDG_CONFIG_HOME/starship/starship.toml"'
-fi
-
 # ---------- Script Aliases ----------
 alias dotfiles='cd "$DOTFILES"'
 alias check_tickets='./check_ticket.sh'
