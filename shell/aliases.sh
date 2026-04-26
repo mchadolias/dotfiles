@@ -36,24 +36,45 @@ alias reboot='sudo systemctl reboot'
 alias poweroff='sudo systemctl poweroff'
 alias shutdown='sudo systemctl poweroff'
 
-# ---------- apt (Debian/Ubuntu only) ----------
+# ---------- Package managers (guarded — require sudo) ----------
 if command -v apt >/dev/null 2>&1; then
 	alias update='sudo apt update'
 	alias upgrade='sudo apt upgrade -y'
 	alias install='sudo apt install'
 	alias remove='sudo apt remove'
+elif command -v pacman >/dev/null 2>&1; then
+	alias update='sudo pacman -Syu'
+	alias install='sudo pacman -S'
+	alias remove='sudo pacman -R'
+elif command -v dnf >/dev/null 2>&1; then
+	alias update='sudo dnf check-update'
+	alias upgrade='sudo dnf upgrade -y'
+	alias install='sudo dnf install'
+	alias remove='sudo dnf remove'
 fi
 
 # ---------- Misc ----------
 alias wget='wget -c'
 
-# ---------- Tmux / Kitty ----------
+# ---------- Tools ---------- 
+if command -v nvim >/dev/null 2>&1; then
+	alias vim='nvim'
+fi
+
 if command -v tmux >/dev/null 2>&1; then
 	alias tmux='tmux -f "$XDG_CONFIG_HOME/tmux/tmux.conf"'
 fi
 
 if command -v kitty >/dev/null 2>&1; then
 	alias kssh='kitty +kitten ssh'
+fi
+
+if command -v yazi >/dev/null 2>&1; then
+	alias yazi='yazi --config "$XDG_CONFIG_HOME/yazi/config.yaml"'
+fi
+
+if command -v starship >/dev/null 2>&1; then
+	alias starship='starship --config "$XDG_CONFIG_HOME/starship/starship.toml"'
 fi
 
 # ---------- Script Aliases ----------
