@@ -1,7 +1,6 @@
 # ~/.condarc
 
 channels:
-
 - conda-forge
 
 channel_priority: strict
@@ -14,12 +13,12 @@ always_yes: false
 env_prompt: '({name})'
 
 envs_dirs:
-
-- /home/USER/tools/miniforge3/envs
+- /home/$USER/tools/miniforge3/envs
+- $WORK/software/private/conda/envs
 
 pkgs_dirs:
-
-- /home/USER/tools/miniforge3/pkgs
+- /home/$USER/tools/miniforge3/pkgs
+- $WORK/software/private/conda/pkgs
 
 quiet: false
 safety_checks: warn

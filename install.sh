@@ -29,7 +29,8 @@ done
 # ----------------------------------------------------------------------------
 # Locate repo root (the directory containing this script)
 # ----------------------------------------------------------------------------
-DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export DOTFILES
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -76,35 +77,35 @@ link() {
 # ----------------------------------------------------------------------------
 # Plan
 # ----------------------------------------------------------------------------
-log "Repo:    $DOTFILES_DIR"
+log "Repo:    $DOTFILES"
 log "Backup:  $BACKUP_DIR (only created if needed)"
 $DRY_RUN && log "Mode:    DRY RUN"
 
 # Shell
-link "$DOTFILES_DIR/shell/zshenv"   "$HOME/.zshenv"
-link "$DOTFILES_DIR/shell/zprofile" "$XDG_CONFIG_HOME/zsh/.zprofile"
-link "$DOTFILES_DIR/shell/zshrc"    "$XDG_CONFIG_HOME/zsh/.zshrc"
-link "$DOTFILES_DIR/shell/bashrc"   "$HOME/.bashrc"
-link "$DOTFILES_DIR/shell/profile"  "$HOME/.profile"
+link "$DOTFILES/shell/zshenv"   "$HOME/.zshenv"
+link "$DOTFILES/shell/zprofile" "$XDG_CONFIG_HOME/zsh/.zprofile"
+link "$DOTFILES/shell/zshrc"    "$XDG_CONFIG_HOME/zsh/.zshrc"
+link "$DOTFILES/shell/bashrc"   "$HOME/.bashrc"
+link "$DOTFILES/shell/profile"  "$HOME/.profile"
 
 # zsh env.d drop-ins — link the whole directory so new files added to the
 # repo show up automatically without re-running install.sh.
-link "$DOTFILES_DIR/shell/env.d"    "$XDG_CONFIG_HOME/zsh/env.d"
+link "$DOTFILES/shell/env.d"    "$XDG_CONFIG_HOME/zsh/env.d"
 
 # Tmux
-link "$DOTFILES_DIR/tmux/tmux.conf" "$XDG_CONFIG_HOME/tmux/tmux.conf"
+link "$DOTFILES/tmux/tmux.conf" "$XDG_CONFIG_HOME/tmux/tmux.conf"
 
 # Git
-link "$DOTFILES_DIR/git/gitconfig" "$HOME/.gitconfig"
+link "$DOTFILES/git/gitconfig" "$HOME/.gitconfig"
 
 # SSH
-link "$DOTFILES_DIR/ssh/config" "$HOME/.ssh/config"
+link "$DOTFILES/ssh/config" "$HOME/.ssh/config"
 run mkdir -p "$HOME/.ssh/sockets"
 run chmod 700 "$HOME/.ssh" "$HOME/.ssh/sockets" 2>/dev/null || true
 
 # Kitty (only if kitty exists — skip on headless machines)
 if command -v kitty >/dev/null 2>&1; then
-	link "$DOTFILES_DIR/kitty/kitty.conf" "$XDG_CONFIG_HOME/kitty/kitty.conf"
+	link "$DOTFILES/kitty/kitty.conf" "$XDG_CONFIG_HOME/kitty/kitty.conf"
 fi
 
 # Conda — substitutes __HOME__ in the placeholder file at install time.
@@ -114,7 +115,7 @@ if $DO_CONDA && command -v conda >/dev/null 2>&1; then
 		log "would render condarc -> $HOME/.condarc with HOME=$HOME"
 	else
 		log "render  condarc -> $HOME/.condarc"
-		sed "s|__HOME__|$HOME|g" "$DOTFILES_DIR/conda/condarc" > "$HOME/.condarc.new"
+		sed "s|__HOME__|$HOME|g" "$DOTFILES/conda/condarc" > "$HOME/.condarc.new"
 		if [[ -e "$HOME/.condarc" && ! -L "$HOME/.condarc" ]]; then
 			mkdir -p "$BACKUP_DIR"
 			mv "$HOME/.condarc" "$BACKUP_DIR/"
@@ -137,8 +138,8 @@ copy_if_missing() {
 	run cp "$src" "$dst"
 }
 
-copy_if_missing "$DOTFILES_DIR/git/gitconfig.local.example" "$HOME/.gitconfig.local"
-copy_if_missing "$DOTFILES_DIR/ssh/config.local.example"    "$HOME/.ssh/config.local"
+copy_if_missing "$DOTFILES/git/gitconfig.local.example" "$HOME/.gitconfig.local"
+copy_if_missing "$DOTFILES/ssh/config.local.example"    "$HOME/.ssh/config.local"
 
 # ----------------------------------------------------------------------------
 # Done

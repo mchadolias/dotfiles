@@ -8,8 +8,7 @@
 # ----------------------------------------------------------------------------
 # 1. Universal aliases
 # ----------------------------------------------------------------------------
-DOTFILES="$HOME/dotfiles"
-export DOTFILES
+: "${DOTFILES:= pwd}"  # set DOTFILES to current dir if not already set by env or parent shell
 [[ -r "$DOTFILES/shell/aliases.sh" ]] && source "$DOTFILES/shell/aliases.sh"
 
 # ----------------------------------------------------------------------------

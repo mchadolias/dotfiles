@@ -26,7 +26,6 @@ else
 fi
 
 # Aliases — same file used by zsh
-: "${DOTFILES:=$HOME/dotfiles}"
 [ -f "$DOTFILES/shell/aliases.sh" ] && . "$DOTFILES/shell/aliases.sh"
 
 # bash completion

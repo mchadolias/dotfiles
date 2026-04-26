@@ -4,9 +4,9 @@
 # ============================================================================
 
 [user]
-	name = Michalis Chadolias
-	email = mchadolias@gmail.com
-	signingkey = 65E10A75223DA0D4 
+	name = Albert Einstein
+	email = al_einstein@protonvpn.com
+	signingkey = XXXXXXXXXXXXX 
 
 [commit]
 	gpgsign = true

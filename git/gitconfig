@@ -6,7 +6,7 @@
 
 [include]
 	# Machine-local identity & overrides. Must exist or git warns on first use.
-	path = ~/dotfiles/git/config.local
+	path = ~/.gitconfig.local
 
 [core]
 	editor = vim

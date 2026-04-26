@@ -7,37 +7,25 @@
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# IFIC Gluon cluster
+#  Cluster Number 1
 # ----------------------------------------------------------------------------
-Host glui1
-	HostName glui01.ific.uv.es
-Host glui2
-	HostName glui02.ific.uv.es
+Host cluster1
+	HostName hostname
 
-Host glui*
-	User mchadoli
+Host cluster1*
+	User username
 	IdentitiesOnly yes
-	IdentityFile ~/.ssh/ific_gluon_cc
+	IdentityFile ~/.ssh/xx_key
 
 # ----------------------------------------------------------------------------
-# CC-IN2P3 Lyon (Kerberos/GSSAPI)
+# Kerberos/GSSAPI Oriented Cluster
 # ----------------------------------------------------------------------------
-Host cca
-	HostName cca.in2p3.fr
-Host cca1
-	HostName cca001.in2p3.fr
-Host cca5
-	HostName cca005.in2p3.fr
-Host cca8
-	HostName cca008.in2p3.fr
-Host cca11
-	HostName cca011.in2p3.fr
-Host cca19
-	HostName cca019.in2p3.fr
+Host cluster2
+	HostName hostname
 
-Host cc*
-	User                      mchadoli
-	GSSAPIClientIdentity      mchadoli@CC.IN2P3.FR
+Host cluster2*
+	User                      username
+	GSSAPIClientIdentity      username@client
 	GSSAPIAuthentication      yes
 	GSSAPIDelegateCredentials yes
 	GSSAPITrustDns            yes
