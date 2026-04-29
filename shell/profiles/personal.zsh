@@ -4,12 +4,6 @@
 # Anything that wouldn't make sense on a shared cluster goes here.
 # ============================================================================
 
-# ----------------------------------------------------------------------------
-# 1. Greeter
-# ----------------------------------------------------------------------------
-if command -v fastfetch >/dev/null 2>&1; then
-	fastfetch
-fi
 
 # ----------------------------------------------------------------------------
 # 2. Conda / Mamba
@@ -30,8 +24,8 @@ if [[ -x "$CONDA_HOME/bin/conda" ]]; then
 fi
 
 # Mamba (if installed alongside)
-if [[ -x "/usr/bin/mamba" ]]; then
-	export MAMBA_EXE='/usr/bin/mamba'
+if [[ -x "$CONDA_HOME/bin/mamba" ]]; then
+	export MAMBA_EXE="$CONDA_HOME/bin/mamba"
 	export MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-$HOME/.local/share/mamba}"
 	__mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2>/dev/null)"
 	if [ $? -eq 0 ]; then
@@ -84,3 +78,9 @@ if [[ -z "${TMUX:-}" && "$TERM" == "xterm-kitty" && -z "${NO_TMUX:-}" ]] \
 	unset _session_name
 fi
 
+# ----------------------------------------------------------------------------
+# 1. Greeter
+# ----------------------------------------------------------------------------
+if command -v fastfetch >/dev/null 2>&1; then
+	fastfetch
+fi

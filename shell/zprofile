@@ -79,10 +79,3 @@ export FZF_DEFAULT_OPTS="
 # 7. Machine-specific overrides
 # ----------------------------------------------------------------------------
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"
-
-# ----------------------------------------------------------------------------
-# 8. Load zshrc from XDG location (interactive config)
-# ----------------------------------------------------------------------------
-if [ -n "${ZSH_VERSION:-}" ] && [ -f "$XDG_CONFIG_HOME/zsh/.zshrc" ]; then
-	. "$XDG_CONFIG_HOME/zsh/.zshrc"
-fi
