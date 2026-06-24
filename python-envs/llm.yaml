@@ -1,0 +1,45 @@
+name: llm
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.12
+  - pytorch
+  - pytorch-cuda=12.4  # remove and add cpuonly for CPU-only machines
+  - pip
+
+  # Notebooks
+  - jupyterlab
+  - ipywidgets
+  - tqdm
+  - rich
+
+  - pip:
+    # Hugging Face ecosystem
+    - transformers
+    - datasets
+    - tokenizers
+    - huggingface-hub
+    - accelerate       # multi-GPU / mixed precision training
+    - peft             # parameter-efficient fine-tuning (LoRA, etc.)
+    - trl              # RLHF / SFT training helpers
+    - bitsandbytes     # 4/8-bit quantisation
+
+    # Embeddings & retrieval
+    - sentence-transformers
+    - faiss-cpu        # swap for faiss-gpu if on GPU node
+
+    # Agents & orchestration
+    - langchain
+    - langchain-community
+    - langgraph
+    - openai
+    - anthropic
+
+    # Evaluation & monitoring
+    - wandb
+    - evaluate         # HF metrics library
+
+    # Utilities
+    - python-dotenv

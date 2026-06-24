@@ -1,0 +1,41 @@
+name: data-science
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+
+  # Notebooks & interaction
+  - jupyterlab
+  - jupyterlab-git
+  - ipywidgets
+  - nbformat
+
+  # Dataframes
+  - pandas
+  - polars          # fast out-of-core dataframes
+  - pyarrow         # Arrow columnar format (shared by both)
+
+  # Query engine
+  - duckdb          # SQL over files/dataframes — no server needed
+
+  # Numerics
+  - numpy
+  - scipy
+
+  # ML
+  - scikit-learn
+  - xgboost
+  - lightgbm
+
+  # Visualisation
+  - matplotlib
+  - seaborn
+  - plotly
+  - bokeh
+
+  # Utilities
+  - tqdm
+  - rich
+  - python-dotenv
+  - requests
+  - pyyaml

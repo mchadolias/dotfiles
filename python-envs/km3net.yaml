@@ -1,0 +1,46 @@
+name: km3net
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+
+  # I/O
+  - uproot
+  - h5py
+  - pytables
+
+  # Core Scikit-HEP stack
+  - awkward-array
+  - vector
+  - boost-histogram
+  - hist
+  - particle
+  - hepunits
+
+  # Statistics & fitting
+  - iminuit
+  - scipy
+
+  # Numerics & ML
+  - numpy
+  - pandas
+  - scikit-learn
+
+  # Visualisation
+  - matplotlib
+  - scienceplots
+  - seaborn
+  - mplhep
+
+  # Notebooks & interaction
+  - jupyterlab
+  - ipywidgets
+  - tqdm
+
+  # KM3NeT-specific (PyPI — not on conda-forge)
+  - pip
+  - pip:
+    - km3pipe       # core KM3NeT data processing pipeline
+    - km3io         # ROOT/HDF5 KM3NeT file reader
+    - km3astro      # coordinate transforms & source catalogues
+    - km3flux       # neutrino flux models

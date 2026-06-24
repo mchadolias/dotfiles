@@ -1,0 +1,57 @@
+name: admin-tools
+channels:
+  - conda-forge
+  - bioconda # Required for Snakemake and its dependencies
+dependencies:
+  # Base & Interactive
+  - python=3.12
+  - ipython
+  - pipx
+
+  # Workflow Management
+  - snakemake # Orchestrates complex file-based workflows
+  - pulp # Linear programming solver (often needed by Snakemake)
+
+  # Git & Project Orchestration
+  - gitpython
+  - cookiecutter
+  - copier
+  - cruft
+
+  # CLI & Automation
+  - click
+  - typer
+  - fire
+  - invoke
+  - rich
+  - fabric
+  - paramiko
+
+  # Data & Configuration
+  - pandas
+  - openpyxl
+  - pyyaml
+  - toml
+  - python-dotenv
+  - requests
+
+  # Development & Quality Control
+  - pre-commit
+  - black
+  - ruff
+  - mypy
+  - uv
+
+  # Testing
+  - pytest
+  - pytest-cov
+  - coverage
+  - hypothesis
+
+  # Documentation
+  - mkdocs
+  - mkdocs-material
+
+  # System Monitoring
+  - psutil
+  - glances

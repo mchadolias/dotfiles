@@ -1,0 +1,42 @@
+name: hep
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+
+  # I/O
+  - uproot         # ROOT files without ROOT
+  - h5py
+  - pytables
+
+  # Core Scikit-HEP stack
+  - awkward-array  # jagged / variable-length arrays
+  - vector         # Lorentz / 3D vectors
+  - boost-histogram
+  - hist           # histogram objects built on boost-histogram
+  - particle       # PDG particle database
+  - hepunits       # unit constants
+
+  # Statistics & fitting
+  - iminuit        # MINUIT2 minimiser
+  - pyhf           # statistical models (HistFactory)
+  - scipy
+
+  # Analysis framework
+  - coffea         # columnar HEP analysis
+
+  # Numerics & ML
+  - numpy
+  - pandas
+  - scikit-learn
+
+  # Visualisation
+  - matplotlib
+  - scienceplots
+  - seaborn
+  - mplhep         # HEP-style matplotlib helpers
+
+  # Notebooks & interaction
+  - jupyterlab
+  - ipywidgets
+  - tqdm

@@ -1,6 +1,5 @@
 # ============================================================================
 # ~/.bashrc — interactive bash config.
-# Keep in sync with zsh where it matters, but don't fight bash-specific habits.
 # ============================================================================
 
 # Only in interactive shells
@@ -9,13 +8,15 @@ case $- in
 	  *) return;;
 esac
 
+DOTFILES="${DOTFILES:-$HOME/dotfiles}"
+
 # History tuning
 HISTCONTROL=ignoreboth:erasedups
 HISTSIZE=10000
 HISTFILESIZE=20000
 shopt -s histappend checkwinsize
 
-# Colour prompt if the terminal supports it
+# Colour prompt fallback (starship overrides below when present)
 case "$TERM" in
 	xterm-color|*-256color|xterm-kitty) color_prompt=yes;;
 esac
@@ -25,8 +26,8 @@ else
 	PS1='\u@\h:\w\$ '
 fi
 
-# Aliases — same file used by zsh
-[ -f "$DOTFILES/shell/aliases.sh" ] && . "$DOTFILES/shell/aliases.sh"
+# Universal aliases — same file used by zsh
+[ -r "$DOTFILES/shell/aliases/general.sh" ] && . "$DOTFILES/shell/aliases/general.sh"
 
 # bash completion
 if ! shopt -oq posix; then
@@ -47,19 +48,35 @@ if command -v zoxide >/dev/null 2>&1; then
 	eval "$(zoxide init bash --cmd j)"
 fi
 
-# >>> conda initialize >>>
-__conda_setup="$("$HOME/tools/miniforge3/bin/conda" 'shell.bash' 'hook' 2>/dev/null)"
-if [ $? -eq 0 ]; then
-	eval "$__conda_setup"
-else
-	if [ -f "$HOME/tools/miniforge3/etc/profile.d/conda.sh" ]; then
-		. "$HOME/tools/miniforge3/etc/profile.d/conda.sh"
-	else
-		export PATH="$HOME/tools/miniforge3/bin:$PATH"
+# ----------------------------------------------------------------------------
+# Profile dispatch — mirrors .zshrc.
+# Cluster profile is shell-neutral (.sh) and shared with zsh; DOTFILES_PROFILE
+# is exported at login (see ~/.profile.local on clusters); defaults to personal.
+# ----------------------------------------------------------------------------
+DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
+for _ext in bash sh; do
+	_profile_file="$DOTFILES/shell/profiles/${DOTFILES_PROFILE}.${_ext}"
+	if [ -r "$_profile_file" ]; then
+		. "$_profile_file"
+		break
 	fi
+done
+unset _ext _profile_file
+
+# ----------------------------------------------------------------------------
+# Personal-machine conda (miniforge3). Skipped on clusters, where the cluster
+# profile lazy-loads conda/micromamba instead.
+# ----------------------------------------------------------------------------
+if [ "${DOTFILES_PROFILE:-personal}" = personal ]; then
+	__conda_setup="$("$HOME/tools/miniforge3/bin/conda" 'shell.bash' 'hook' 2>/dev/null)"
+	# shellcheck disable=SC2181
+	if [ $? -eq 0 ]; then
+		eval "$__conda_setup"
+	elif [ -f "$HOME/tools/miniforge3/etc/profile.d/conda.sh" ]; then
+		. "$HOME/tools/miniforge3/etc/profile.d/conda.sh"
+	fi
+	unset __conda_setup
 fi
-unset __conda_setup
-# <<< conda initialize <<<
 
 # Local overrides
-[ -f "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
+[ -r "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"

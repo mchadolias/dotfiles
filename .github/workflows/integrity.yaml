@@ -1,0 +1,388 @@
+name: Repository Integrity
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+jobs:
+
+  # ============================================================
+  # JOB 1 — Required files
+  # ============================================================
+  required-files:
+    name: Required Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check required files exist
+        run: |
+          MISSING=()
+          REQUIRED=(
+            "README.md"
+            "LICENSE"
+            "shell/zshrc"
+            "shell/bashrc"
+            "shell/aliases/general.sh"
+            "tools/README.md"
+            "tools/LICENSE"
+          )
+          for f in "${REQUIRED[@]}"; do
+            if [[ ! -f "$f" ]]; then
+              echo "❌ Missing: $f"
+              MISSING+=("$f")
+            else
+              echo "✅ Found:   $f"
+            fi
+          done
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo ""
+            echo "Error: ${#MISSING[@]} required file(s) missing."
+            exit 1
+          fi
+
+  # ============================================================
+  # JOB 2 — Submodule integrity
+  # ============================================================
+  submodules:
+    name: Submodule Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify submodules are initialised
+        run: |
+          echo "--- Registered submodules ---"
+          git submodule status
+
+          UNINIT=$(git submodule status | grep '^-')
+          if [[ -n "$UNINIT" ]]; then
+            echo ""
+            echo "❌ The following submodules are not initialised:"
+            echo "$UNINIT"
+            exit 1
+          fi
+          echo "✅ All submodules initialised"
+
+      - name: Check submodule is not on a detached HEAD pointing to a stale commit
+        run: |
+          git submodule foreach --quiet '
+            BEHIND=$(git log HEAD..origin/$(git symbolic-ref --short HEAD 2>/dev/null || echo main) --oneline 2>/dev/null | wc -l)
+            if [ "$BEHIND" -gt 20 ]; then
+              echo "⚠️  $name is $BEHIND commits behind its remote branch"
+            else
+              echo "✅  $name is up to date (or within 20 commits)"
+            fi
+          '
+
+  # ============================================================
+  # JOB 3 — Shell script linting (ShellCheck)
+  # ============================================================
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on all shell scripts
+        run: |
+          echo "--- Scanning for shell scripts ---"
+          SCRIPTS=$(find . \
+            -not -path './.git/*' \
+            \( -name "*.sh" -o -name "*.bash" \) \
+            | sort)
+
+          if [[ -z "$SCRIPTS" ]]; then
+            echo "No shell scripts found."
+            exit 0
+          fi
+
+          echo "$SCRIPTS"
+          echo ""
+
+          # SC2148: shebang check — skip for sourced files (shell/aliases/, shell/profiles/)
+          # SC1090/1091: non-constant source — common in dotfiles
+          shellcheck \
+            --severity=warning \
+            --exclude=SC1090,SC1091,SC2148 \
+            $SCRIPTS
+
+      - name: Run ShellCheck on Zsh config files (as bash)
+        run: |
+          ZSH_FILES=$(find . \
+            -not -path './.git/*' \
+            \( -name "*.zsh" -o -name ".zshrc" -o -name ".zprofile" -o -name ".zshenv" -o -name "_zshrc" -o -name "_zprofile" -o -name "_zshenv" \) \
+            | sort)
+
+          if [[ -z "$ZSH_FILES" ]]; then
+            echo "No Zsh config files found."
+            exit 0
+          fi
+
+          echo "--- Zsh files (linted as bash, best-effort) ---"
+          echo "$ZSH_FILES"
+          echo ""
+
+          # Use bash dialect — zsh-specific syntax will show warnings but not fail CI
+          shellcheck \
+            --severity=error \
+            --shell=bash \
+            --exclude=SC1090,SC1091,SC2148 \
+            $ZSH_FILES || true
+
+  # ============================================================
+  # JOB 4 — File permissions
+  # ============================================================
+  permissions:
+    name: File Permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Executable scripts must have the executable bit
+        run: |
+          # Only enforce on real scripts (those with a #! shebang).
+          # Sourced config files (shell/aliases/, shell/profiles/, conda-loaders.sh,
+          # cluster-banner.sh) have no shebang and are meant to stay non-executable.
+          BAD=()
+          while IFS= read -r -d '' script; do
+            if head -1 "$script" | grep -q '^#!'; then
+              if [[ ! -x "$script" ]]; then
+                echo "❌ Not executable: $script"
+                BAD+=("$script")
+              else
+                echo "✅ executable: $script"
+              fi
+            else
+              echo "➖ sourced (skipped):  $script"
+            fi
+          done < <(find . -not -path './.git/*' -name "*.sh" -print0)
+
+          if [[ ${#BAD[@]} -gt 0 ]]; then
+            echo ""
+            echo "Fix with: chmod +x <script>"
+            exit 1
+          fi
+
+      - name: Config files must NOT be executable
+        run: |
+          BAD=()
+          CONFIG_PATTERNS=("*.conf" "*.condarc" "config" ".zshrc" ".zprofile" ".zshenv" "_zshrc" "_zprofile" "_zshenv")
+          for pat in "${CONFIG_PATTERNS[@]}"; do
+            while IFS= read -r -d '' f; do
+              if [[ -x "$f" ]]; then
+                echo "⚠️  Should not be executable: $f"
+                BAD+=("$f")
+              fi
+            done < <(find . -not -path './.git/*' -name "$pat" -print0)
+          done
+
+          if [[ ${#BAD[@]} -gt 0 ]]; then
+            echo ""
+            echo "Fix with: chmod -x <file>"
+            exit 1
+          fi
+          echo "✅ Config file permissions OK"
+
+  # ============================================================
+  # JOB 5 — Python linting (scripts/)
+  # ============================================================
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff on Python scripts
+        run: |
+          PY_FILES=$(find . -not -path './.git/*' -name "*.py" | sort)
+
+          if [[ -z "$PY_FILES" ]]; then
+            echo "No Python files found."
+            exit 0
+          fi
+
+          echo "--- Python files ---"
+          echo "$PY_FILES"
+          echo ""
+          ruff check $PY_FILES
+
+  # ============================================================
+  # JOB 6 — Broken symlinks
+  # ============================================================
+  symlinks:
+    name: Broken Symlinks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Find broken symlinks
+        run: |
+          BROKEN=$(find . -not -path './.git/*' -type l ! -exec test -e {} \; -print)
+          if [[ -n "$BROKEN" ]]; then
+            echo "❌ Broken symlinks found:"
+            echo "$BROKEN"
+            exit 1
+          fi
+          echo "✅ No broken symlinks"
+
+  # ============================================================
+  # JOB 7 — Markdown lint
+  # ============================================================
+  markdown:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint
+        run: |
+          MD_FILES=$(find . -not -path './.git/*' -not -path '*/node_modules/*' -name "*.md" | sort)
+
+          if [[ -z "$MD_FILES" ]]; then
+            echo "No Markdown files found."
+            exit 0
+          fi
+
+          # MD013 = line length — disabled (common in technical docs)
+          # MD033 = inline HTML — disabled (used in README tables)
+          markdownlint \
+            --disable MD013 MD033 \
+            $MD_FILES
+
+  # ============================================================
+  # JOB 8 — Secret scanning (Gitleaks)
+  # Runs AFTER all other checks and blocks the commit if secrets
+  # are detected anywhere in the repository history.
+  # ============================================================
+  gitleaks:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    needs:
+      - required-files
+      - submodules
+      - shellcheck
+      - permissions
+      - python-lint
+      - symlinks
+      - markdown
+    # Run even if upstream jobs failed — secrets must always be caught
+    if: always()
+    steps:
+      - name: Checkout (full history + submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # Full history so gitleaks can scan every commit, not just HEAD
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set to your repo's secret if you have a paid Gitleaks licence:
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      # Upload the SARIF report so findings appear in the
+      # GitHub Security → Code scanning tab (free for public repos)
+      - name: Upload SARIF report
+        if: failure()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+        continue-on-error: true   # don't mask the gitleaks failure
+
+      - name: Summarise findings on failure
+        if: failure()
+        run: |
+          echo "❌ Gitleaks detected secrets or credentials in the repository."
+          echo ""
+          echo "Steps to remediate:"
+          echo "  1. Identify the offending commit shown above."
+          echo "  2. Rotate / revoke the exposed credential immediately."
+          echo "  3. Remove the secret from history:"
+          echo "       git filter-repo --path <file> --invert-paths"
+          echo "  4. Force-push the cleaned history and re-run this workflow."
+          echo ""
+          echo "To allowlist a false positive, add a .gitleaks.toml rule:"
+          echo "  [[allowlist]]"
+          echo "  description = \"reason\""
+          echo "  regexTarget = \"match\""
+          echo "  regex = '''<pattern>'''"
+
+  # ============================================================
+  # Summary job — fails if any check above failed
+  # ============================================================
+  integrity-pass:
+    name: All Checks Passed
+    needs:
+      - required-files
+      - submodules
+      - shellcheck
+      - permissions
+      - python-lint
+      - symlinks
+      - markdown
+      - gitleaks
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Evaluate results
+        run: |
+          RESULTS='${{ toJSON(needs) }}'
+          FAILED=$(echo "$RESULTS" | python3 -c "
+          import sys, json
+          needs = json.load(sys.stdin)
+          failed = [k for k, v in needs.items() if v['result'] not in ('success', 'skipped')]
+          if failed:
+              print('\n'.join(failed))
+          ")
+
+          if [[ -n "$FAILED" ]]; then
+            echo "❌ The following checks failed:"
+            echo "$FAILED"
+            exit 1
+          fi
+
+          echo "✅ All integrity checks passed."

@@ -1,6 +1,6 @@
 # dotfiles
 
-Personal shell, terminal, and tooling configuration. 
+Personal shell, terminal, and tooling configuration. Covers both desktop and HPC cluster environments.
 
 ## Directory
 
@@ -8,32 +8,46 @@ Personal shell, terminal, and tooling configuration.
 dotfiles/
 ├── README.md
 ├── .gitignore
-├── install.sh                      # symlink-based installer (no deps)
-├── stow.sh                         # GNU Stow installer (alternative)
-├── build-stow-tree.sh              # regenerates stow/ from source files
+├── install.sh                   # symlink-based installer (no deps)
+├── stow.sh                      # GNU Stow installer (alternative)
+├── build-stow-tree.sh           # regenerates stow/ from source files
 ├── shell/
-│   ├── zshenv                      # universal env (XDG, locale, ZDOTDIR)
-│   ├── zprofile                    # login PATH + agents (no compdef calls)
-│   ├── zshrc                       # universal interactive + profile dispatch
+│   ├── zshenv                   # universal env (XDG, locale, ZDOTDIR)
+│   ├── zprofile                 # login PATH + agents (no compdef calls)
+│   ├── zshrc                    # universal interactive + profile dispatch
 │   ├── bashrc
 │   ├── profile
-│   ├── aliases.sh                  # universal aliases (no site-specific)
+│   ├── aliases/
+│   │   ├── general.sh           # universal aliases (nav, grep, git…)
+│   │   ├── personal.sh          # desktop-only aliases
+│   │   └── cluster.sh           # HPC / SLURM / km3net aliases
+│   ├── conda-loaders.sh         # load_conda / load_micromamba helpers
+│   ├── cluster-banner.sh        # login banner (site-aware)
+│   ├── check_ticket.sh          # Kerberos ticket check helper
+│   ├── env.d/                   # drop-in *.zsh snippets (auto-sourced)
+│   ├── plugins/                 # plugin loader (zinit)
 │   └── profiles/
-│       └── personal.zsh            # desktop bits: kitty, fastfetch, conda…
+│       ├── personal.sh          # desktop: kitty, fastfetch, conda, uv…
+│       ├── cluster.sh           # HPC entry point — dispatches by hostname
+│       ├── cca.sh               # CC-IN2P3 Lyon
+│       └── glui.sh              # GLUON IFIC Valencia
 ├── git/
-│   ├── gitconfig                   # no identity inside
-│   ├── gitconfig.local.example     # template for ~/.gitconfig.local
+│   ├── gitconfig                # no identity inside
+│   ├── gitconfig.local.example  # template for ~/.gitconfig.local
 │   └── scripts/
 │       ├── set-config.sh
 │       └── create-local-git-config.sh
 ├── ssh/
-│   ├── config                      # github + huggingface only
-│   └── config.local.example        # template for ~/.ssh/config.local
+│   ├── config                   # github + huggingface only
+│   └── config.local.example     # template for ~/.ssh/config.local
 ├── tmux/tmux.conf
 ├── kitty/kitty.conf
+├── neovim/                      # Neovim config (lazy.nvim, rafi plugins)
+├── starship/starship.toml
 ├── conda/condarc
-└── stow/                           # auto-generated symlink tree (committed)
-    ├── zsh/      → packages laid out for `stow`
+├── python-envs/                 # conda environment specs (*.yaml)
+└── stow/                        # auto-generated symlink tree (committed)
+    ├── zsh/                     # packages laid out for `stow`
     ├── bash/
     ├── git/
     ├── tmux/
@@ -105,39 +119,95 @@ if needed, so you can't get into a "stale tree" state at install time.
 
 ## How profiles work
 
-The base `.zshrc` ends with a profile dispatch:
+The base `.zshrc` ends with a profile dispatch that tries `.zsh` first,
+then `.sh`:
 
 ```sh
 DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
-# Search overlay first, then base
-for _base in "${DOTFILES_OVERLAY:-}" "$DOTFILES"; do
-    [[ -z "$_base" ]] && continue
-    _f="$_base/shell/profiles/${DOTFILES_PROFILE}.zsh"
-    [[ -r "$_f" ]] && { source "$_f"; break; }
+
+for _ext in zsh sh; do
+    _profile_file="$DOTFILES/shell/profiles/${DOTFILES_PROFILE}.${_ext}"
+    if [[ -r "$_profile_file" ]]; then
+        source "$_profile_file"
+        break
+    fi
 done
 ```
 
 So:
 
 - **Personal machine**: nothing to do. `DOTFILES_PROFILE` defaults to
-  `personal` and `profiles/personal.zsh` from this repo loads (kitty,
-  fastfetch, conda, mamba, julia, uv).
-- **Cluster machine**: a separate private repo (`dotfiles-cluster`)
-  drops `profiles/cluster.zsh` into its own tree, and machines set:
+  `personal` and `profiles/personal.sh` loads (kitty, fastfetch, conda,
+  mamba, julia, uv).
+- **Cluster machine**: set the profile in `~/.zshrc.local`:
 
   ```sh
   # in ~/.zshrc.local
-  export DOTFILES_OVERLAY="$HOME/dotfiles-cluster"
   export DOTFILES_PROFILE="cluster"
   ```
 
-  The base `.zshrc` then loads the cluster profile from the overlay
-  instead of the personal one. The cluster profile in turn dispatches
-  on hostname for site-specific bits (CC-IN2P3 vs IFIC, etc.).
+  `profiles/cluster.sh` then loads `conda-loaders.sh`, cluster aliases,
+  and dispatches on hostname to a site-specific profile (`cca.sh` for
+  CC-IN2P3 Lyon, `glui.sh` for GLUON IFIC Valencia, etc.).
 
 You can drop ad-hoc snippets in `~/.config/zsh/env.d/*.zsh` — they're
 sourced automatically near the top of `.zshrc`. Useful for one-off tools
 that don't justify their own profile entry.
+
+## Cluster setup
+
+All cluster-specific files are now in this repo — no separate overlay repo
+needed.
+
+### Install on a new cluster node
+
+```sh
+git clone git@github.com:mchadolias/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./install.sh --no-conda     # clusters manage conda themselves
+```
+
+Then add to `~/.zshrc.local`:
+
+```sh
+export DOTFILES_PROFILE="cluster"
+```
+
+After install, edit identity files:
+
+```sh
+$EDITOR ~/.gitconfig.local
+$EDITOR ~/.ssh/config.local
+```
+
+### Site-specific profiles
+
+#### CC-IN2P3 Lyon (`cca`)
+
+- `ORGANIZATION=km3net`, `WORK=/sps/km3net/users/$USER`
+- Conda at `/pbs/software/redhat-9-x86_64/anaconda/3.11` (via `CONDA_HOME`).
+- Auto-activates `micromamba` env `admin-tools` at login.
+- Disable auto-activation: `CCA_NO_AUTO_MAMBA=1` in `~/.zshrc.local`.
+
+#### GLUON IFIC Valencia (`glui`)
+
+- `ORGANIZATION=vega`, `WORK=/lustre/ific.uv.es/prj/gl/vega/$USER`
+- No site-installed conda — uses user-installed micromamba.
+- Disable auto-activation: `GLUI_NO_AUTO_MAMBA=1` in `~/.zshrc.local`.
+
+### Adding a new site
+
+1. Create `shell/profiles/<sitecode>.sh` with at minimum:
+   ```sh
+   export ORGANIZATION="..."
+   export WORK="/path/to/your/scratch/${USER}"
+   ```
+2. Add a case to `shell/profiles/cluster.sh`:
+   ```sh
+   *<sitecode>*) source "$DOTFILES/shell/profiles/<sitecode>.sh" ;;
+   ```
+3. Optionally add a case to `shell/cluster-banner.sh` for a custom colour
+   and friendly name.
 
 ## Secret handling
 
@@ -165,9 +235,15 @@ plaintext.
   `.zshrc` / `.zprofile` live there, not in `$HOME`.
 - **`compdef`** must never be called before `compinit`. That means no
   `eval "$(uv generate-shell-completion zsh)"` or similar in `.zshenv`
-  / `.zprofile`. They go in `profiles/personal.zsh` after `.zshrc`'s
+  / `.zprofile`. They go in `profiles/personal.sh` after `.zshrc`'s
   `compinit`.
 - **`zoxide`** is bound to `j`, not `cd`. `cd` keeps standard semantics.
 - **Tmux auto-attach** (in kitty) can be disabled with `NO_TMUX=1 kitty`.
 - **YAML doesn't expand `~` or `$HOME`**, so `condarc` paths are
   templated with `__HOME__` and rendered by `install.sh`.
+- **Profile files use `.sh` extension** (not `.zsh`) so they can be
+  sourced by both zsh and bash. The dispatch in `.zshrc` tries `.zsh`
+  first for backwards compatibility, then falls back to `.sh`.
+- **Cluster aliases** (`shell/aliases/cluster.sh`) are loaded by
+  `profiles/cluster.sh`, not by the base `.zshrc`. They're only active
+  when `DOTFILES_PROFILE=cluster`.

@@ -1,9 +1,12 @@
-# shellcheck shell=bash
 # ============================================================================
 # Personal profile — loaded on a desktop / laptop.
 # Anything that wouldn't make sense on a shared cluster goes here.
 # ============================================================================
 
+# ----------------------------------------------------------------------------
+# 1. Personal aliases
+# ----------------------------------------------------------------------------
+[ -r "$DOTFILES/shell/aliases/personal.sh" ] && source "$DOTFILES/shell/aliases/personal.sh"
 
 # ----------------------------------------------------------------------------
 # 2. Conda / Mamba
@@ -79,7 +82,7 @@ if [[ -z "${TMUX:-}" && "$TERM" == "xterm-kitty" && -z "${NO_TMUX:-}" ]] \
 fi
 
 # ----------------------------------------------------------------------------
-# 1. Greeter
+# 7. Greeter
 # ----------------------------------------------------------------------------
 if command -v fastfetch >/dev/null 2>&1; then
 	fastfetch

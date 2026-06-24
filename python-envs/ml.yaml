@@ -1,0 +1,50 @@
+name: ml
+channels:
+  - pytorch
+  - nvidia       # CUDA packages; remove if CPU-only
+  - conda-forge
+dependencies:
+  - python=3.12
+
+  # PyTorch — pick ONE of the two blocks below and comment out the other.
+  # GPU (CUDA 12.x):
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.4
+  # CPU-only (uncomment and remove the pytorch-cuda line above):
+  # - pytorch
+  # - torchvision
+  # - torchaudio
+  # - cpuonly
+
+  # Training framework
+  - lightning         # PyTorch Lightning
+  - torchmetrics
+
+  # Experiment tracking
+  - wandb
+  - tensorboard
+
+  # Numerics & data
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+
+  # Utilities
+  - einops           # tensor reshaping DSL
+  - tqdm
+  - rich
+
+  # Config management
+  - hydra-core
+  - omegaconf
+
+  # Visualisation
+  - matplotlib
+  - seaborn
+
+  # Notebooks
+  - jupyterlab
+  - ipywidgets

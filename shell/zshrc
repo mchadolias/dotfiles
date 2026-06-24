@@ -2,7 +2,6 @@
 # ~/.zshrc — INTERACTIVE shells only.
 # This file is universal. Heavy / environment-specific tool init
 # (conda, mamba, julia, fastfetch, kitty integration, etc.) lives in
-# $DOTFILES/shell/profiles/${DOTFILES_PROFILE}.zsh.
 # ============================================================================
 
 # ----------------------------------------------------------------------------
@@ -10,7 +9,7 @@
 # ----------------------------------------------------------------------------
 # Load DOTFILES var from zshenv, then aliases (shared with bash) from a separate file.
 DOTFILES="${DOTFILES:-$HOME/dotfiles}"
-[[ -r "$DOTFILES/shell/aliases.sh" ]] && source "$DOTFILES/shell/aliases.sh"
+[[ -r "$DOTFILES/shell/aliases/general.sh" ]] && source "$DOTFILES/shell/aliases/general.sh"
 
 # ----------------------------------------------------------------------------
 # 2. Completion (must precede plugins that register completions)
@@ -67,23 +66,16 @@ y() {
 # ----------------------------------------------------------------------------
 # 7. Profile dispatch
 # ----------------------------------------------------------------------------
-# DOTFILES_PROFILE selects which environment-specific file to load.
-# Defaults to "personal" — set DOTFILES_PROFILE=cluster in ~/.zshrc.local
-# (or in the cluster repo's install) to switch.
-#
-# DOTFILES_OVERLAY (optional) points at a second repo (e.g. dotfiles-cluster)
-# that can provide its own profile file. Overlay wins over base.
 DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
 
-for _base in "${DOTFILES_OVERLAY:-}" "$DOTFILES"; do
-	[[ -z "$_base" ]] && continue
-	_profile_file="$_base/shell/profiles/${DOTFILES_PROFILE}.zsh"
+for _ext in zsh sh; do
+	_profile_file="$DOTFILES/shell/profiles/${DOTFILES_PROFILE}.${_ext}"
 	if [[ -r "$_profile_file" ]]; then
 		source "$_profile_file"
 		break
 	fi
 done
-unset _base _profile_file
+unset _ext _profile_file
 
 # ----------------------------------------------------------------------------
 # 8. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
