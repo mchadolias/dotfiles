@@ -76,6 +76,33 @@ export FZF_DEFAULT_OPTS="
 "
 
 # ----------------------------------------------------------------------------
+# 7. Scripts / tools
+# ----------------------------------------------------------------------------
+
+_link_tools() {
+	local dir="$1" pattern="$2" suffix="$3" runner="${4:-}"
+	local tool name
+	[[ -d "$dir" ]] || return 0
+	while IFS= read -r -d '' tool; do
+		if [[ -n "$runner" ]]; then
+			[[ -r "$tool" ]] || continue   # interpreted: just needs to be readable
+		else
+			[[ -x "$tool" ]] || continue   # self-executing: needs +x
+		fi
+		name="$(basename "$tool" "$suffix")"
+		alias "$name"="${runner:+$runner }$tool"
+	done < <(find "$dir" -maxdepth 1 -type f -name "$pattern" -print0 2>/dev/null)
+}
+
+: "${TOOLS_BIN:=$DOTFILES/tools/bash}"
+: "${TOOLS_SCRIPTS:=$DOTFILES/tools/scripts}"
+
+_link_tools "$TOOLS_BIN"     '*.sh' '.sh'
+_link_tools "$TOOLS_SCRIPTS" '*.py' '.py' python3
+
+unset -f _link_tools
+
+# ----------------------------------------------------------------------------
 # 7. Machine-specific overrides
 # ----------------------------------------------------------------------------
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"

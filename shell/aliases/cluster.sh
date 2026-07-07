@@ -20,31 +20,3 @@ fi
 # WORK is set per-site in profiles/cca.sh / profiles/glui.sh.
 alias work='cd "$WORK"'
 alias home='cd "$HOME"'
-
-# ---------- Tools ----------
-
-# Override the path in ~/.zshrc.local if your submodule checkout differs:
-#   export CLUSTER_TOOLS_BIN=/some/other/path
-
-_link_tools() {
-	local dir="$1" pattern="$2" suffix="$3" runner="${4:-}"
-	local tool name
-	[[ -d "$dir" ]] || return 0
-	while IFS= read -r -d '' tool; do
-		if [[ -n "$runner" ]]; then
-			[[ -r "$tool" ]] || continue   # interpreted: just needs to be readable
-		else
-			[[ -x "$tool" ]] || continue   # self-executing: needs +x
-		fi
-		name="$(basename "$tool" "$suffix")"
-		alias "$name"="${runner:+$runner }$tool"
-	done < <(find "$dir" -maxdepth 1 -type f -name "$pattern" -print0 2>/dev/null)
-}
-
-: "${CLUSTER_TOOLS_BIN:=$DOTFILES/tools/bash}"
-: "${CLUSTER_TOOLS_SCRIPTS:=$DOTFILES/tools/scripts}"
-
-_link_tools "$CLUSTER_TOOLS_BIN"     '*.sh' '.sh'
-_link_tools "$CLUSTER_TOOLS_SCRIPTS" '*.py' '.py' python3
-
-unset -f _link_tools
