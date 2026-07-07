@@ -64,9 +64,13 @@ y() {
 }
 
 # ----------------------------------------------------------------------------
-# 7. Profile dispatch
+# 7. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
 # ----------------------------------------------------------------------------
-DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
+[[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
+
+# ----------------------------------------------------------------------------
+# 8. Profile dispatch
+# ----------------------------------------------------------------------------
 
 for _ext in zsh sh; do
 	_profile_file="$DOTFILES/shell/profiles/${DOTFILES_PROFILE}.${_ext}"
@@ -76,8 +80,3 @@ for _ext in zsh sh; do
 	fi
 done
 unset _ext _profile_file
-
-# ----------------------------------------------------------------------------
-# 8. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
-# ----------------------------------------------------------------------------
-[[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"

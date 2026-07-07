@@ -48,6 +48,9 @@ if command -v zoxide >/dev/null 2>&1; then
 	eval "$(zoxide init bash --cmd j)"
 fi
 
+# Local overrides
+[ -r "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
+
 # ----------------------------------------------------------------------------
 # Profile dispatch — mirrors .zshrc.
 # Cluster profile is shell-neutral (.sh) and shared with zsh; DOTFILES_PROFILE
@@ -77,6 +80,3 @@ if [ "${DOTFILES_PROFILE:-personal}" = personal ]; then
 	fi
 	unset __conda_setup
 fi
-
-# Local overrides
-[ -r "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
