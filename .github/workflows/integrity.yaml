@@ -67,7 +67,7 @@ jobs:
           echo "--- Registered submodules ---"
           git submodule status
 
-          UNINIT=$(git submodule status | grep '^-')
+          UNINIT=$(git submodule status | grep '^-' || true)
           if [[ -n "$UNINIT" ]]; then
             echo ""
             echo "❌ The following submodules are not initialised:"
@@ -105,8 +105,12 @@ jobs:
       - name: Run ShellCheck on all shell scripts
         run: |
           echo "--- Scanning for shell scripts ---"
+          # Submodules (kitty/tokyo_theme, tools) are vendored dependencies
+          # with their own repos/CI — only lint this repo's own scripts.
           SCRIPTS=$(find . \
             -not -path './.git/*' \
+            -not -path './kitty/tokyo_theme/*' \
+            -not -path './tools/*' \
             \( -name "*.sh" -o -name "*.bash" \) \
             | sort)
 
@@ -129,6 +133,8 @@ jobs:
         run: |
           ZSH_FILES=$(find . \
             -not -path './.git/*' \
+            -not -path './kitty/tokyo_theme/*' \
+            -not -path './tools/*' \
             \( -name "*.zsh" -o -name ".zshrc" -o -name ".zprofile" -o -name ".zshenv" -o -name "_zshrc" -o -name "_zprofile" -o -name "_zshenv" \) \
             | sort)
 
@@ -195,7 +201,7 @@ jobs:
                 echo "⚠️  Should not be executable: $f"
                 BAD+=("$f")
               fi
-            done < <(find . -not -path './.git/*' -name "$pat" -print0)
+            done < <(find . -not -path './.git/*' -type f -name "$pat" -print0)
           done
 
           if [[ ${#BAD[@]} -gt 0 ]]; then
@@ -227,7 +233,13 @@ jobs:
 
       - name: Run ruff on Python scripts
         run: |
-          PY_FILES=$(find . -not -path './.git/*' -name "*.py" | sort)
+          # Submodules (kitty/tokyo_theme, tools) are vendored dependencies
+          # with their own repos/CI — only lint this repo's own scripts.
+          PY_FILES=$(find . \
+            -not -path './.git/*' \
+            -not -path './kitty/tokyo_theme/*' \
+            -not -path './tools/*' \
+            -name "*.py" | sort)
 
           if [[ -z "$PY_FILES" ]]; then
             echo "No Python files found."
