@@ -103,6 +103,6 @@ _link_tools "$TOOLS_SCRIPTS" '*.py' '.py' python3
 unset -f _link_tools
 
 # ----------------------------------------------------------------------------
-# 7. Machine-specific overrides
+# 8. Machine-specific overrides
 # ----------------------------------------------------------------------------
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"

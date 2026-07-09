@@ -185,27 +185,35 @@ $EDITOR ~/.ssh/config.local
 #### CC-IN2P3 Lyon (`cca`)
 
 - `ORGANIZATION=km3net`, `WORK=/sps/km3net/users/$USER`
-- Conda at `/pbs/software/redhat-9-x86_64/anaconda/3.11` (via `CONDA_HOME`).
-- Auto-activates `micromamba` env `admin-tools` at login.
-- Disable auto-activation: `CCA_NO_AUTO_MAMBA=1` in `~/.zshrc.local`.
+- Conda at `/pbs/software/redhat-9-x86_64/anaconda/3.11` (via `CONDA_HOME`,
+  added to `PATH` only — no eager `conda init`, since that's slow on login).
+- Loads the site's system/group profile from `/afs` if present.
 
 #### GLUON IFIC Valencia (`glui`)
 
 - `ORGANIZATION=vega`, `WORK=/lustre/ific.uv.es/prj/gl/vega/$USER`
-- No site-installed conda — uses user-installed micromamba.
-- Disable auto-activation: `GLUI_NO_AUTO_MAMBA=1` in `~/.zshrc.local`.
+- No site-installed conda — relies on the cluster profile's generic
+  `load_conda` / `load_micromamba` lazy loaders.
+
+Both sites share the same auto-activation mechanism: set
+`CONDA_DEFAULT_ENV=<env>` in your `~/.zshrc.local` (or the equivalent
+`*.local` file) to activate that env automatically at login.
 
 ### Adding a new site
 
 1. Create `shell/profiles/<sitecode>.sh` with at minimum:
+
    ```sh
    export ORGANIZATION="..."
    export WORK="/path/to/your/scratch/${USER}"
    ```
+
 2. Add a case to `shell/profiles/cluster.sh`:
+
    ```sh
    *<sitecode>*) source "$DOTFILES/shell/profiles/<sitecode>.sh" ;;
    ```
+
 3. Optionally add a case to `shell/cluster-banner.sh` for a custom colour
    and friendly name.
 
@@ -247,3 +255,6 @@ plaintext.
 - **Cluster aliases** (`shell/aliases/cluster.sh`) are loaded by
   `profiles/cluster.sh`, not by the base `.zshrc`. They're only active
   when `DOTFILES_PROFILE=cluster`.
+- **Updating submodules** (`kitty/tokyo_theme`, `tools`): run
+  `git submodule update --remote --merge` then commit the bumped
+  reference.

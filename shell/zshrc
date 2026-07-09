@@ -71,6 +71,7 @@ y() {
 # ----------------------------------------------------------------------------
 # 8. Profile dispatch
 # ----------------------------------------------------------------------------
+DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
 
 for _ext in zsh sh; do
 	_profile_file="$DOTFILES/shell/profiles/${DOTFILES_PROFILE}.${_ext}"
