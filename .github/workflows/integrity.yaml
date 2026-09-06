@@ -135,7 +135,9 @@ jobs:
             -not -path './.git/*' \
             -not -path './kitty/tokyo_theme/*' \
             -not -path './tools/*' \
-            \( -name "*.zsh" -o -name ".zshrc" -o -name ".zprofile" -o -name ".zshenv" -o -name "_zshrc" -o -name "_zprofile" -o -name "_zshenv" \) \
+            \( -name "*.zsh" -o -name ".zshrc" -o -name ".zprofile" -o -name ".zshenv" \
+               -o -name "_zshrc" -o -name "_zprofile" -o -name "_zshenv" \
+               -o -name "zshrc" -o -name "zprofile" -o -name "zshenv" \) \
             | sort)
 
           if [[ -z "$ZSH_FILES" ]]; then

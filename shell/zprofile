@@ -47,7 +47,38 @@ if command -v gpgconf >/dev/null 2>&1; then
 fi
 
 # ----------------------------------------------------------------------------
-# 5. Export selected variables to the systemd user environment
+# 5. SSH agent — reuse a live agent, otherwise start one
+# ----------------------------------------------------------------------------
+# Liveness comes from `ssh-add -l`, not the process table:
+#   0 = agent up, keys loaded   1 = agent up, no keys   2 = no reachable agent
+# Only exit 2 means we need an agent, so a forwarded socket (ssh -A) or a
+# gpg-agent socket — neither of which sets SSH_AGENT_PID — is left alone.
+if command -v ssh-agent >/dev/null 2>&1 && command -v ssh-add >/dev/null 2>&1; then
+	# Prefer $XDG_RUNTIME_DIR: tmpfs, cleared at logout, so the file can
+	# never outlive the agent it describes.
+	_ssh_env="${XDG_RUNTIME_DIR:-$XDG_STATE_HOME}/ssh-agent.env"
+
+	# Nothing reachable in the environment — try the agent we recorded earlier.
+	ssh-add -l >/dev/null 2>&1
+	if (( $? == 2 )) && [[ -r "$_ssh_env" ]]; then
+		source "$_ssh_env" >/dev/null
+	fi
+
+	# Still nothing (no file, or it named a dead agent) — start one.
+	# -t 8h bounds exposure: ssh/config sets AddKeysToAgent yes, and the
+	# agent is not killed at logout.
+	ssh-add -l >/dev/null 2>&1
+	if (( $? == 2 )); then
+		(umask 077; ssh-agent -t 8h | grep -v '^echo' > "$_ssh_env")
+		chmod 600 "$_ssh_env" 2>/dev/null
+		source "$_ssh_env" >/dev/null
+	fi
+
+	unset _ssh_env
+fi
+
+# ----------------------------------------------------------------------------
+# 6. Export selected variables to the systemd user environment
 # ----------------------------------------------------------------------------
 if command -v systemctl >/dev/null 2>&1 && systemctl --user >/dev/null 2>&1; then
 	systemctl --user import-environment \
@@ -56,7 +87,7 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user >/dev/null 2>&1; the
 fi
 
 # ----------------------------------------------------------------------------
-# 6. Pager / tool env vars
+# 7. Pager / tool env vars
 # ----------------------------------------------------------------------------
 export LESSHISTFILE="-"
 export LESS="-R"
@@ -76,7 +107,7 @@ export FZF_DEFAULT_OPTS="
 "
 
 # ----------------------------------------------------------------------------
-# 7. Scripts / tools
+# 8. Scripts / tools
 # ----------------------------------------------------------------------------
 
 _link_tools() {
@@ -103,6 +134,6 @@ _link_tools "$TOOLS_SCRIPTS" '*.py' '.py' python3
 unset -f _link_tools
 
 # ----------------------------------------------------------------------------
-# 8. Machine-specific overrides
+# 9. Machine-specific overrides
 # ----------------------------------------------------------------------------
 [[ -f "$HOME/.zprofile.local" ]] && source "$HOME/.zprofile.local"

@@ -40,5 +40,7 @@ export SONARLINT_USER_HOME="$XDG_DATA_HOME/sonarlint"
 # ---------- Notes ----------
 # If you want gpg-agent to handle SSH keys instead of ssh-agent:
 #   1. enable-ssh-support in ~/.gnupg/gpg-agent.conf
-#   2. remove the ssh-agent block in ~/.zprofile (or override $SSH_AUTH_SOCK
-#      to the gpg-agent socket in ~/.zprofile.local)
+#   2. nothing else — the ssh-agent block in ~/.zprofile (section 5) probes
+#      with `ssh-add -l` and defers to any reachable agent, gpg-agent included.
+#      To pin a specific socket, set $SSH_AUTH_SOCK in ~/.zprofile.local; it
+#      is sourced after that block and so wins.
