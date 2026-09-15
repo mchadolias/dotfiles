@@ -65,29 +65,18 @@ load_micromamba() {
 		. "$cvmfs/micromamba/micromamba_x86.sh"
 		echo "Micromamba environment loaded from CVMFS."
 
-		# The km3net hook only defines `micromamba` as a shell function, which is
-		# invisible to non-interactive subshells (every `make`/script recipe line
-		# spawns a fresh one). Recover the real binary from the function body and
-		# export it, so non-interactive tools can call micromamba directly.
-		if [ -z "${MAMBA_EXE:-}" ]; then
-			local body exe
-			if [ -n "${ZSH_VERSION:-}" ]; then
-				body="$(functions micromamba 2>/dev/null)"
-			else
-				body="$(declare -f micromamba 2>/dev/null)"
-			fi
-			exe="$(printf '%s' "$body" | grep -oE "/[^[:space:]'\"]*micromamba[^[:space:]'\"]*" | head -n1)"
-			[ -n "$exe" ] && [ -x "$exe" ] && export MAMBA_EXE="$exe"
+		local exe="${cvmfs}/micromamba/micromamba_x86" link="$HOME/.local/bin/micromamba"
+		if [ -x "$exe" ] && [ ! -e "$link" ]; then
+			mkdir -p "$HOME/.local/bin"
+			ln -s "$exe" "$link"
 		fi
-		if [ -n "${MAMBA_EXE:-}" ]; then
-			local exe_dir
-			exe_dir="$(dirname "$MAMBA_EXE")"
-			case ":$PATH:" in
-				*":$exe_dir:"*) : ;;
-				*) export PATH="$exe_dir:$PATH" ;;
-			esac
-		else
-			echo "load_micromamba: could not locate the micromamba binary for PATH/MAMBA_EXE; make and other non-interactive tools may not find it." >&2
+		export MAMBA_EXE="${MAMBA_EXE:-$exe}"
+		case ":$PATH:" in
+			*":$HOME/.local/bin:"*) : ;;
+			*) export PATH="$HOME/.local/bin:$PATH" ;;
+		esac
+		if [ ! -x "$exe" ]; then
+			echo "load_micromamba: expected binary not found at $exe; make and other non-interactive tools may not find micromamba." >&2
 		fi
 	else
 		echo "Micromamba script not found at $cvmfs/micromamba/micromamba_x86.sh." >&2
