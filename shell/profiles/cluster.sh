@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ============================================================================
 # Cluster profile entry point (shell-neutral: sourced by both zsh and bash).
 # Loaded by .zshrc / .bashrc when DOTFILES_PROFILE=cluster.

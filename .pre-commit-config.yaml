@@ -1,0 +1,67 @@
+# ============================================================================
+# pre-commit — single source of truth for linting, run identically by
+# `pre-commit run --all-files` locally and by the Lint job in CI.
+#
+#   pre-commit install          # enable the git hook (one time)
+#   pre-commit run --all-files  # run everything now
+#
+# NOT included, deliberately:
+#   shfmt — it collapses the column alignment in build-stow-tree.sh and the
+#   one-line `|| { ...; }` guards, a ~470-line diff for no readability gain.
+#   `make fmt-shell` still runs it on demand if you want it.
+# ============================================================================
+
+# Vendored / third-party trees carry their own CI; never rewrite them here.
+exclude: |
+  (?x)^(
+    tools/|
+    kitty/tokyo_theme/|
+    neovim/|
+    media/
+  )
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      # Replaces the hand-rolled "File Permissions" CI job.
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      # Dotfiles repo: an SSH/GPG private key must never land here.
+      - id: detect-private-key
+
+  # shellcheck-py ships the binary as a wheel. The upstream koalaman hook runs
+  # via Docker, which is unavailable on the HPC nodes this repo also targets.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        # SC1090/SC1091: non-constant / unfollowable `source` — normal in dotfiles.
+        # SC2148: no shebang — these files are sourced, not executed.
+        # Quoted: inside a YAML flow sequence an unquoted comma is an item
+        # separator, which would split this into three bogus arguments.
+        args: ["--severity=warning", "--exclude=SC1090,SC1091,SC2148"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.45.0
+    hooks:
+      - id: markdownlint
+        # MD013 line length / MD033 inline HTML — both intentional in these docs.
+        args: ["--disable", "MD013", "MD033"]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks

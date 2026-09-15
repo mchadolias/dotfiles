@@ -65,18 +65,3 @@ for _ext in bash sh; do
 	fi
 done
 unset _ext _profile_file
-
-# ----------------------------------------------------------------------------
-# Personal-machine conda (miniforge3). Skipped on clusters, where the cluster
-# profile lazy-loads conda/micromamba instead.
-# ----------------------------------------------------------------------------
-if [ "${DOTFILES_PROFILE:-personal}" = personal ]; then
-	__conda_setup="$("$HOME/tools/miniforge3/bin/conda" 'shell.bash' 'hook' 2>/dev/null)"
-	# shellcheck disable=SC2181
-	if [ $? -eq 0 ]; then
-		eval "$__conda_setup"
-	elif [ -f "$HOME/tools/miniforge3/etc/profile.d/conda.sh" ]; then
-		. "$HOME/tools/miniforge3/etc/profile.d/conda.sh"
-	fi
-	unset __conda_setup
-fi

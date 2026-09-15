@@ -113,20 +113,12 @@ if command -v kitty >/dev/null 2>&1; then
 	link "$DOTFILES/kitty/kitty.conf" "$XDG_CONFIG_HOME/kitty/kitty.conf"
 fi
 
-# Conda — substitutes __HOME__ in the placeholder file at install time.
-# On shared filesystems where you don't want this rewritten, skip with --no-conda.
+# Conda — condarc uses ${HOME}, which conda expands itself, so this is a plain
+# symlink. (It used to be rendered with sed to substitute __HOME__, but the
+# file never contained that placeholder; the render step was a no-op.)
+# Skip with --no-conda on shared filesystems.
 if $DO_CONDA && command -v conda >/dev/null 2>&1; then
-	if $DRY_RUN; then
-		log "would render condarc -> $HOME/.condarc with HOME=$HOME"
-	else
-		log "render  condarc -> $HOME/.condarc"
-		sed "s|__HOME__|$HOME|g" "$DOTFILES/conda/condarc" > "$HOME/.condarc.new"
-		if [[ -e "$HOME/.condarc" && ! -L "$HOME/.condarc" ]]; then
-			mkdir -p "$BACKUP_DIR"
-			mv "$HOME/.condarc" "$BACKUP_DIR/"
-		fi
-		mv "$HOME/.condarc.new" "$HOME/.condarc"
-	fi
+	link "$DOTFILES/conda/condarc" "$HOME/.condarc"
 fi
 
 # ----------------------------------------------------------------------------

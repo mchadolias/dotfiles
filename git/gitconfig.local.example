@@ -6,7 +6,7 @@
 [user]
 	name = Albert Einstein
 	email = al_einstein@protonvpn.com
-	signingkey = XXXXXXXXXXXXX 
+	signingkey = XXXXXXXXXXXXX
 
 [commit]
 	gpgsign = true

@@ -22,6 +22,27 @@ SHELLCHECK_FLAGS   ?= --severity=warning --exclude=SC1090,SC1091,SC2148
 RUFF               ?= ruff
 MARKDOWNLINT_FLAGS ?= --disable MD013 MD033
 
+# --- Strictness
+# STRICT=0 (default): a missing tool prints a hint and the target is skipped.
+# STRICT=1 (used by `make check-strict`, and by CI): a missing tool is a hard
+# failure. Without this, `make check` reported success on a machine with no
+# linters installed, having verified nothing.
+STRICT ?= 0
+
+# Usage inside a recipe: $(call require,<tool>)
+# .ONESHELL means the whole recipe is one shell, so `exit 0` skips the target.
+define require
+	if ! command -v $(1) >/dev/null 2>&1; then \
+	  if [ "$(STRICT)" = "1" ]; then \
+	    echo "❌ $(1) is required but not installed (STRICT=1) — see: make check-tools"; \
+	    exit 1; \
+	  else \
+	    echo "⚠  $(1) not installed — skipping (see: make check-tools)"; \
+	    exit 0; \
+	  fi; \
+	fi
+endef
+
 # --- File discovery (skip .git and the tools/ + kitty/tokyo_theme submodules)
 #     Patterns are quoted so the shell does not glob them before find runs.
 SH_FILES   := $(shell find . -path ./.git -prune -o -path ./tools -prune -o -path ./kitty/tokyo_theme -prune -o \( -name '*.sh' -o -name '*.bash' \) -print)
@@ -41,26 +62,26 @@ fmt format: fmt-shell fmt-python fmt-md fmt-yaml ## Auto-format everything avail
 
 .PHONY: fmt-shell
 fmt-shell: ## Format shell scripts with shfmt (tabs, indented cases)
-	@command -v shfmt >/dev/null || { echo "⚠  shfmt not installed — skipping (see: make check-tools)"; exit 0; }
+	@$(call require,shfmt)
 	[ -n "$(SH_FILES)" ] || { echo "no shell files"; exit 0; }
 	shfmt -w -l $(SHFMT_FLAGS) $(SH_FILES)
 	echo "✅ shfmt done"
 
 .PHONY: fmt-python
 fmt-python: ## Format Python with ruff
-	@command -v $(RUFF) >/dev/null || { echo "⚠  ruff not installed — skipping"; exit 0; }
+	@$(call require,$(RUFF))
 	[ -n "$(PY_FILES)" ] || { echo "no python files"; exit 0; }
 	$(RUFF) format $(PY_FILES)
 
 .PHONY: fmt-md
 fmt-md: ## Format Markdown with prettier (optional)
-	@command -v prettier >/dev/null || { echo "⚠  prettier not installed — skipping markdown format"; exit 0; }
+	@$(call require,prettier)
 	[ -n "$(MD_FILES)" ] || { echo "no markdown files"; exit 0; }
 	prettier --write $(MD_FILES)
 
 .PHONY: fmt-yaml
 fmt-yaml: ## Format YAML with prettier (optional)
-	@command -v prettier >/dev/null || { echo "⚠  prettier not installed — skipping yaml format"; exit 0; }
+	@$(call require,prettier)
 	[ -n "$(YAML_FILES)" ] || { echo "no yaml files"; exit 0; }
 	prettier --write $(YAML_FILES)
 
@@ -69,11 +90,11 @@ fmt-yaml: ## Format YAML with prettier (optional)
 # ============================================================================
 
 .PHONY: lint
-lint: lint-shell lint-python lint-md ## Run all linters
+lint: lint-shell lint-python lint-md lint-yaml ## Run all linters
 
 .PHONY: lint-shell
 lint-shell: ## ShellCheck on *.sh / *.bash
-	@command -v shellcheck >/dev/null || { echo "⚠  shellcheck not installed — skipping"; exit 0; }
+	@$(call require,shellcheck)
 	[ -n "$(SH_FILES)" ] || { echo "no shell files"; exit 0; }
 	shellcheck $(SHELLCHECK_FLAGS) $(SH_FILES)
 	echo "✅ shellcheck clean"
@@ -86,13 +107,13 @@ lint-python: ## ruff check on *.py
 
 .PHONY: lint-md
 lint-md: ## markdownlint on *.md
-	@command -v markdownlint >/dev/null || { echo "⚠  markdownlint not installed — skipping"; exit 0; }
+	@$(call require,markdownlint)
 	[ -n "$(MD_FILES)" ] || { echo "no markdown files"; exit 0; }
 	markdownlint $(MARKDOWNLINT_FLAGS) $(MD_FILES)
 
 .PHONY: lint-yaml
 lint-yaml: ## yamllint on *.yaml / *.yml (optional)
-	@command -v yamllint >/dev/null || { echo "⚠  yamllint not installed — skipping"; exit 0; }
+	@$(call require,yamllint)
 	[ -n "$(YAML_FILES)" ] || { echo "no yaml files"; exit 0; }
 	yamllint $(YAML_FILES)
 
@@ -102,6 +123,10 @@ lint-yaml: ## yamllint on *.yaml / *.yml (optional)
 
 .PHONY: check
 check: required-files perms-check symlinks lint ## Full local gate (structure + lint)
+
+.PHONY: check-strict
+check-strict: ## Same as `check`, but missing linters fail instead of skipping (CI gate)
+	@$(MAKE) --no-print-directory check STRICT=1
 
 .PHONY: required-files
 required-files: ## Verify required files exist
@@ -187,7 +212,7 @@ check-tools: ## Show which optional tools are installed (+ install hints)
 
 .PHONY: clean
 clean: ## Remove editor/format backup files (*.bak *.orig *~)
-	@find . -path ./.git -prune -o \( -name '*.bak' -o -name '*.orig' -o -name '*~' \) -print -delete
+	@find . -not -path '*/.git/*' \( -name '*.bak' -o -name '*.orig' -o -name '*~' \) -print -delete
 
 .PHONY: help
 help: ## Show this help

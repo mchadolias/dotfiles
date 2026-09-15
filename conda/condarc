@@ -1,7 +1,7 @@
 # ~/.condarc
 
 channels:
-- conda-forge
+  - conda-forge
 
 channel_priority: strict
 solver: libmamba
@@ -11,12 +11,10 @@ show_channel_urls: true
 always_yes: false
 
 envs_dirs:
-- /home/${USER}/tools/miniforge3/envs
-- ${WORK}/software/private/conda/envs
+  - ${HOME}/tools/miniforge3/envs
 
 pkgs_dirs:
-- /home/${USER}/tools/miniforge3/pkgs
-- ${WORK}/software/private/conda/pkgs
+  - ${HOME}/tools/miniforge3/pkgs
 
 quiet: false
 safety_checks: warn

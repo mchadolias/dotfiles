@@ -12,13 +12,38 @@ DOTFILES="${DOTFILES:-$HOME/dotfiles}"
 [[ -r "$DOTFILES/shell/aliases/general.sh" ]] && source "$DOTFILES/shell/aliases/general.sh"
 
 # ----------------------------------------------------------------------------
-# 2. Completion (must precede plugins that register completions)
+# 2. History
+# Nothing set HISTFILE before, so zsh kept history in memory only and threw it
+# away at exit (SAVEHIST defaults to 0). That also left zsh-autosuggestions —
+# which reads from history — with nothing to suggest.
+# ----------------------------------------------------------------------------
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+HISTSIZE=50000
+SAVEHIST=50000
+
+# .zprofile creates this at login; non-login interactive shells may not have it.
+[[ -d "${HISTFILE:h}" ]] || mkdir -p "${HISTFILE:h}"
+
+setopt EXTENDED_HISTORY       # record timestamp and duration per entry
+setopt SHARE_HISTORY          # sync across concurrent sessions (implies INC_APPEND)
+setopt HIST_IGNORE_SPACE      # a leading space keeps a command out of history
+setopt HIST_IGNORE_ALL_DUPS   # drop older duplicates of a repeated command
+setopt HIST_REDUCE_BLANKS     # normalise whitespace before storing
+setopt HIST_VERIFY            # expand !! onto the line instead of running blind
+setopt HIST_NO_STORE          # don't record `history` / `fc` calls themselves
+
+# Never persist anything that looks like a credential. Matched against the whole
+# line; a match is kept for the current session but never written to $HISTFILE.
+HISTORY_IGNORE='(*--token=*|*--password=*|*_TOKEN=*|*_KEY=*|*SECRET*|*PASSWORD*|kinit *)'
+
+# ----------------------------------------------------------------------------
+# 3. Completion (must precede plugins that register completions)
 # ----------------------------------------------------------------------------
 autoload -Uz compinit
 compinit -d "$XDG_CACHE_HOME/zsh/.zcompdump"
 
 # ----------------------------------------------------------------------------
-# 3. Modular config drop-in directory
+# 4. Modular config drop-in directory
 # Anything in $ZDOTDIR/env.d/*.zsh gets sourced. Useful for one-off
 # additions you don't want in the main file.
 # ----------------------------------------------------------------------------
@@ -29,7 +54,7 @@ if [[ -d "$ZDOTDIR/env.d" ]]; then
 fi
 
 # ----------------------------------------------------------------------------
-# 4. Prompt — Starship (deferred so compinit finishes first)
+# 5. Prompt — Starship (deferred so compinit finishes first)
 # ----------------------------------------------------------------------------
 if command -v starship >/dev/null 2>&1; then
 	autoload -Uz add-zsh-hook
@@ -42,14 +67,14 @@ if command -v starship >/dev/null 2>&1; then
 fi
 
 # ----------------------------------------------------------------------------
-# 5. zoxide — `j` for jump, leaves `cd` untouched
+# 6. zoxide — `j` for jump, leaves `cd` untouched
 # ----------------------------------------------------------------------------
 if command -v zoxide >/dev/null 2>&1; then
 	eval "$(zoxide init zsh --cmd j)"
 fi
 
 # ----------------------------------------------------------------------------
-# 6. Universal helper functions
+# 7. Universal helper functions
 # ----------------------------------------------------------------------------
 mkcd() { mkdir -p -- "$1" && cd -- "$1"; }
 
@@ -64,12 +89,12 @@ y() {
 }
 
 # ----------------------------------------------------------------------------
-# 7. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
+# 8. Machine-specific overrides (identity, secrets, ad-hoc tweaks)
 # ----------------------------------------------------------------------------
 [[ -r "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 
 # ----------------------------------------------------------------------------
-# 8. Profile dispatch
+# 9. Profile dispatch
 # ----------------------------------------------------------------------------
 DOTFILES_PROFILE="${DOTFILES_PROFILE:-personal}"
 

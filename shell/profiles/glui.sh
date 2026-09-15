@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ============================================================================
 # GLUON IFIC Valencia site profile.
 # Merged from cluster_gluon.sh + the user-section of ific_gluon_profile.sh.
@@ -11,4 +12,3 @@ export EXPERIMENT="km3net"
 # Double quotes — original cluster_gluon.sh used single quotes which left
 # literal '${ORGANIZATION}' / '${USER}' in the path.
 export WORK="/lustre/ific.uv.es/prj/gl/${ORGANIZATION}/${USER}"
-

@@ -16,7 +16,7 @@ Closes #<!-- issue number -->
 - [ ] IFIC GLUON (`glui*`)
 - [ ] CC IN2P3 (`cca*`)
 - [ ] Local only
-- [ ] Other (  )  
+- [ ] Other (  )
 
 ## Checklist
 

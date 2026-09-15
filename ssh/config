@@ -13,6 +13,7 @@ Host *
  AddKeysToAgent yes
  ControlMaster auto
  ControlPersist 10m
+ ControlPath ~/.ssh/sockets/%C
 
 ## Public git forges — identity files only, no usernames
 

@@ -27,16 +27,15 @@ dotfiles/
 │   ├── env.d/                   # drop-in *.zsh snippets (auto-sourced)
 │   ├── plugins/                 # plugin loader (zinit)
 │   └── profiles/
-│       ├── personal.sh          # desktop: kitty, fastfetch, conda, uv…
+│       ├── personal.common.sh   # desktop, shell-neutral: conda, julia, tmux…
+│       ├── personal.zsh         # desktop, zsh-only: uv completions, plugins
+│       ├── personal.bash        # desktop, bash-only: uv completions
 │       ├── cluster.sh           # HPC entry point — dispatches by hostname
 │       ├── cca.sh               # CC-IN2P3 Lyon
 │       └── glui.sh              # GLUON IFIC Valencia
 ├── git/
 │   ├── gitconfig                # no identity inside
-│   ├── gitconfig.local.example  # template for ~/.gitconfig.local
-│   └── scripts/
-│       ├── set-config.sh
-│       └── create-local-git-config.sh
+│   └── gitconfig.local.example  # template for ~/.gitconfig.local
 ├── ssh/
 │   ├── config                   # github + huggingface only
 │   └── config.local.example     # template for ~/.ssh/config.local
@@ -45,15 +44,11 @@ dotfiles/
 ├── neovim/                      # Neovim config (lazy.nvim, rafi plugins)
 ├── starship/starship.toml
 ├── conda/condarc
-├── python-envs/                 # conda environment specs (*.yaml)
-└── stow/                        # auto-generated symlink tree (committed)
-    ├── zsh/                     # packages laid out for `stow`
-    ├── bash/
-    ├── git/
-    ├── tmux/
-    ├── ssh/
-    └── kitty/
+└── python-envs/                 # conda environment specs (*.yaml)
 ```
+
+`stow/` is **generated, not committed** — `build-stow-tree.sh` builds it on
+demand and `stow.sh` rebuilds it automatically if it is missing or stale.
 
 ## Install
 
@@ -61,9 +56,8 @@ You have two installers. Pick the one that matches your taste:
 
 ### Option A — `./install.sh` (default)
 
-Pure-bash, no external dependencies. Backs up pre-existing files, renders
-`condarc` with your real `$HOME` (since YAML can't expand it), and skips
-kitty on headless machines.
+Pure-bash, no external dependencies. Backs up pre-existing files and skips
+kitty/starship on machines where they aren't installed.
 
 ```sh
 git clone git@github.com:<you>/dotfiles.git ~/dotfiles
@@ -75,13 +69,13 @@ cd ~/dotfiles
 Flags:
 
 - `--dry-run` — show what would happen
-- `--no-conda` — skip `condarc` rendering (useful on cluster nodes)
+- `--no-conda` — don't link `~/.condarc` (useful on cluster nodes)
 
 ### Option B — `./stow.sh`
 
 Uses GNU Stow. Requires `stow` to be installed (`apt install stow`,
-`brew install stow`, etc.). Faster, conventional, supports clean
-`--uninstall`. Doesn't manage `condarc` (Stow can't template files).
+`brew install stow`, etc.). Conventional layout, supports clean
+`--uninstall`. Doesn't manage `condarc`.
 
 ```sh
 ./stow.sh --dry-run        # preview (uses stow --no)
@@ -110,8 +104,7 @@ If you add or move a tracked file:
 
 ```sh
 ./build-stow-tree.sh                 # regenerate
-./build-stow-tree.sh --check         # CI-friendly (exit 1 if stale)
-git add stow/ && git commit
+./build-stow-tree.sh --check         # exit 1 if stale
 ```
 
 `stow.sh` runs `build-stow-tree.sh --check` and rebuilds automatically
@@ -137,8 +130,9 @@ done
 So:
 
 - **Personal machine**: nothing to do. `DOTFILES_PROFILE` defaults to
-  `personal` and `profiles/personal.sh` loads (kitty, fastfetch, conda,
-  mamba, julia, uv).
+  `personal` and `profiles/personal.zsh` loads — which sources
+  `profiles/personal.common.sh` (conda, mamba, julia, tmux, greeter) and
+  adds the zsh-only pieces (uv completions, zinit plugins).
 - **Cluster machine**: set the profile in `~/.zshrc.local`:
 
   ```sh
@@ -217,6 +211,27 @@ Both sites share the same auto-activation mechanism: set
 3. Optionally add a case to `shell/cluster-banner.sh` for a custom colour
    and friendly name.
 
+## Development
+
+Linting is defined once, in `.pre-commit-config.yaml`, and run identically
+locally and in CI:
+
+```sh
+pre-commit install          # enable the git hook (one time)
+pre-commit run --all-files  # run everything now
+```
+
+The Makefile wraps the structural checks and the installers:
+
+```sh
+make check          # structure + whichever linters are installed
+make check-strict   # same, but a missing linter is a hard failure (CI gate)
+make check-tools    # what's installed, and how to install what isn't
+```
+
+`make check` skips linters you don't have, so use `make check-strict`
+when you want the answer to actually mean something.
+
 ## Secret handling
 
 What's never in this repo:
@@ -243,15 +258,21 @@ plaintext.
   `.zshrc` / `.zprofile` live there, not in `$HOME`.
 - **`compdef`** must never be called before `compinit`. That means no
   `eval "$(uv generate-shell-completion zsh)"` or similar in `.zshenv`
-  / `.zprofile`. They go in `profiles/personal.sh` after `.zshrc`'s
+  / `.zprofile`. They go in `profiles/personal.zsh` after `.zshrc`'s
   `compinit`.
 - **`zoxide`** is bound to `j`, not `cd`. `cd` keeps standard semantics.
 - **Tmux auto-attach** (in kitty) can be disabled with `NO_TMUX=1 kitty`.
-- **YAML doesn't expand `~` or `$HOME`**, so `condarc` paths are
-  templated with `__HOME__` and rendered by `install.sh`.
-- **Profile files use `.sh` extension** (not `.zsh`) so they can be
-  sourced by both zsh and bash. The dispatch in `.zshrc` tries `.zsh`
-  first for backwards compatibility, then falls back to `.sh`.
+- **`condarc` is a plain symlink.** Conda expands `${HOME}` itself, so no
+  render step is needed. It deliberately contains no `${WORK}` paths: conda
+  leaves an *unset* variable as literal text and resolves it against `$PWD`,
+  which produced a bogus, cwd-dependent `envs_dir` on every non-cluster
+  machine. The cluster paths are exported instead by `conda-loaders.sh`
+  (`CONDA_ENVS_PATH` splits on `:`, `CONDA_PKGS_DIRS` on `,`).
+- **The personal profile is split by shell.** `personal.common.sh` holds the
+  shell-neutral parts; `personal.zsh` and `personal.bash` add the bits that
+  can't be shared. `.zshrc` dispatches `.zsh` → `.sh`, `.bashrc` dispatches
+  `.bash` → `.sh`, so each shell picks up its own file. The cluster profile
+  is genuinely shell-neutral and stays a single `.sh`.
 - **Cluster aliases** (`shell/aliases/cluster.sh`) are loaded by
   `profiles/cluster.sh`, not by the base `.zshrc`. They're only active
   when `DOTFILES_PROFILE=cluster`.

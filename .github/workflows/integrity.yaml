@@ -8,61 +8,90 @@ on:
   # Allow manual trigger from the Actions tab
   workflow_dispatch:
 
+# Least-privilege by default; jobs opt in to more where they need it.
+permissions:
+  contents: read
+
+# One run per ref: a new push cancels the in-flight run for the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   # ============================================================
-  # JOB 1 — Required files
+  # JOB 1 — Lint. Delegates entirely to .pre-commit-config.yaml so
+  # local `pre-commit run --all-files` and CI cannot drift apart.
+  # Covers: shellcheck, ruff, markdownlint, whitespace/EOF, YAML,
+  # symlink health, shebang/executable-bit agreement, private keys.
   # ============================================================
-  required-files:
-    name: Required Files
+  lint:
+    name: Lint (pre-commit)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (with submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - name: Check required files exist
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Cache pre-commit environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: pre-commit-${{ runner.os }}-
+
+      - name: Run pre-commit
         run: |
-          MISSING=()
-          REQUIRED=(
-            "README.md"
-            "LICENSE"
-            "shell/zshrc"
-            "shell/bashrc"
-            "shell/aliases/general.sh"
-            "tools/README.md"
-            "tools/LICENSE"
-          )
-          for f in "${REQUIRED[@]}"; do
-            if [[ ! -f "$f" ]]; then
-              echo "❌ Missing: $f"
-              MISSING+=("$f")
-            else
-              echo "✅ Found:   $f"
-            fi
-          done
-
-          if [[ ${#MISSING[@]} -gt 0 ]]; then
-            echo ""
-            echo "Error: ${#MISSING[@]} required file(s) missing."
-            exit 1
-          fi
+          python -m pip install --upgrade pre-commit
+          pre-commit run --all-files --show-diff-on-failure
 
   # ============================================================
-  # JOB 2 — Submodule integrity
+  # JOB 2 — Structure. The checks pre-commit does not cover:
+  # required files, submodule health, and config-file exec bits.
   # ============================================================
-  submodules:
-    name: Submodule Integrity
+  structure:
+    name: Structure
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (with submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Verify submodules are initialised
+      - name: Required files present
+        run: make required-files
+
+      - name: Shebang scripts are executable
+        run: make perms-check
+
+      - name: Config files must NOT be executable
+        run: |
+          BAD=()
+          CONFIG_PATTERNS=("*.conf" "*.condarc" "config" ".zshrc" ".zprofile" ".zshenv" "zshrc" "zprofile" "zshenv")
+          for pat in "${CONFIG_PATTERNS[@]}"; do
+            while IFS= read -r -d '' f; do
+              if [[ -x "$f" ]]; then
+                echo "⚠️  Should not be executable: $f"
+                BAD+=("$f")
+              fi
+            done < <(find . -not -path './.git/*' -not -path './kitty/tokyo_theme/*' \
+                          -not -path './tools/*' -type f -name "$pat" -print0)
+          done
+          if [[ ${#BAD[@]} -gt 0 ]]; then
+            echo ""
+            echo "Fix with: chmod -x <file>"
+            exit 1
+          fi
+          echo "✅ Config file permissions OK"
+
+      - name: Submodules initialised
         run: |
           echo "--- Registered submodules ---"
           git submodule status
@@ -76,7 +105,7 @@ jobs:
           fi
           echo "✅ All submodules initialised"
 
-      - name: Check submodule is not on a detached HEAD pointing to a stale commit
+      - name: Report submodules far behind their remote
         run: |
           git submodule foreach --quiet '
             BEHIND=$(git log HEAD..origin/$(git symbolic-ref --short HEAD 2>/dev/null || echo main) --oneline 2>/dev/null | wc -l)
@@ -88,261 +117,133 @@ jobs:
           '
 
   # ============================================================
-  # JOB 3 — Shell script linting (ShellCheck)
+  # JOB 3 — Install smoke test.
+  # Everything above lints *style*. This one is the only job that
+  # proves the config actually works once installed: it runs the
+  # installer in a clean container and asserts the results.
   # ============================================================
-  shellcheck:
-    name: ShellCheck
+  install-smoke:
+    name: Install smoke test
     runs-on: ubuntu-latest
+    container:
+      image: debian:trixie-slim
     steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install ShellCheck
-        run: sudo apt-get install -y shellcheck
-
-      - name: Run ShellCheck on all shell scripts
+      - name: Install prerequisites
         run: |
-          echo "--- Scanning for shell scripts ---"
-          # Submodules (kitty/tokyo_theme, tools) are vendored dependencies
-          # with their own repos/CI — only lint this repo's own scripts.
-          SCRIPTS=$(find . \
-            -not -path './.git/*' \
-            -not -path './kitty/tokyo_theme/*' \
-            -not -path './tools/*' \
-            \( -name "*.sh" -o -name "*.bash" \) \
-            | sort)
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            git ca-certificates zsh bash make >/dev/null
 
-          if [[ -z "$SCRIPTS" ]]; then
-            echo "No shell scripts found."
-            exit 0
-          fi
+      # Submodules are not needed: nothing the installer links lives in one.
+      - name: Checkout
+        uses: actions/checkout@v7
 
-          echo "$SCRIPTS"
-          echo ""
-
-          # SC2148: shebang check — skip for sourced files (shell/aliases/, shell/profiles/)
-          # SC1090/1091: non-constant source — common in dotfiles
-          shellcheck \
-            --severity=warning \
-            --exclude=SC1090,SC1091,SC2148 \
-            $SCRIPTS
-
-      - name: Run ShellCheck on Zsh config files (as bash)
+      - name: install.sh --dry-run makes no changes
         run: |
-          ZSH_FILES=$(find . \
-            -not -path './.git/*' \
-            -not -path './kitty/tokyo_theme/*' \
-            -not -path './tools/*' \
-            \( -name "*.zsh" -o -name ".zshrc" -o -name ".zprofile" -o -name ".zshenv" \
-               -o -name "_zshrc" -o -name "_zprofile" -o -name "_zshenv" \
-               -o -name "zshrc" -o -name "zprofile" -o -name "zshenv" \) \
-            | sort)
+          ./install.sh --dry-run
+          test ! -e "$HOME/.zshenv" || { echo "❌ dry-run created files"; exit 1; }
+          echo "✅ dry-run is side-effect free"
 
-          if [[ -z "$ZSH_FILES" ]]; then
-            echo "No Zsh config files found."
-            exit 0
-          fi
+      - name: Install
+        run: ./install.sh --no-conda
 
-          echo "--- Zsh files (linted as bash, best-effort) ---"
-          echo "$ZSH_FILES"
-          echo ""
-
-          # Use bash dialect — zsh-specific syntax will show warnings but not fail CI
-          shellcheck \
-            --severity=error \
-            --shell=bash \
-            --exclude=SC1090,SC1091,SC2148 \
-            $ZSH_FILES || true
-
-  # ============================================================
-  # JOB 4 — File permissions
-  # ============================================================
-  permissions:
-    name: File Permissions
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Executable scripts must have the executable bit
+      - name: Symlinks point back into the repo
         run: |
-          # Only enforce on real scripts (those with a #! shebang).
-          # Sourced config files (shell/aliases/, shell/profiles/, conda-loaders.sh,
-          # cluster-banner.sh) have no shebang and are meant to stay non-executable.
-          BAD=()
-          while IFS= read -r -d '' script; do
-            if head -1 "$script" | grep -q '^#!'; then
-              if [[ ! -x "$script" ]]; then
-                echo "❌ Not executable: $script"
-                BAD+=("$script")
-              else
-                echo "✅ executable: $script"
-              fi
+          fail=0
+          check() {
+            if [ -L "$1" ] && [ -e "$1" ]; then
+              echo "✅ $1 -> $(readlink "$1")"
             else
-              echo "➖ sourced (skipped):  $script"
+              echo "❌ $1 is not a working symlink"; fail=1
             fi
-          done < <(find . -not -path './.git/*' -name "*.sh" -print0)
+          }
+          check "$HOME/.zshenv"
+          check "$HOME/.config/zsh/.zshrc"
+          check "$HOME/.config/zsh/.zprofile"
+          check "$HOME/.config/zsh/env.d"
+          check "$HOME/.bashrc"
+          check "$HOME/.profile"
+          check "$HOME/.gitconfig"
+          check "$HOME/.ssh/config"
+          check "$HOME/.config/tmux/tmux.conf"
+          exit $fail
 
-          if [[ ${#BAD[@]} -gt 0 ]]; then
-            echo ""
-            echo "Fix with: chmod +x <script>"
-            exit 1
-          fi
-
-      - name: Config files must NOT be executable
+      - name: Local templates created, not symlinked
         run: |
-          BAD=()
-          CONFIG_PATTERNS=("*.conf" "*.condarc" "config" ".zshrc" ".zprofile" ".zshenv" "_zshrc" "_zprofile" "_zshenv")
-          for pat in "${CONFIG_PATTERNS[@]}"; do
-            while IFS= read -r -d '' f; do
-              if [[ -x "$f" ]]; then
-                echo "⚠️  Should not be executable: $f"
-                BAD+=("$f")
-              fi
-            done < <(find . -not -path './.git/*' -type f -name "$pat" -print0)
+          for f in "$HOME/.gitconfig.local" "$HOME/.ssh/config.local"; do
+            if [ -f "$f" ] && [ ! -L "$f" ]; then echo "✅ $f"; else echo "❌ $f missing"; exit 1; fi
           done
+          test "$(stat -c '%a' "$HOME/.ssh")" = "700" || { echo "❌ ~/.ssh not 0700"; exit 1; }
+          echo "✅ ~/.ssh is 0700"
 
-          if [[ ${#BAD[@]} -gt 0 ]]; then
-            echo ""
-            echo "Fix with: chmod -x <file>"
-            exit 1
-          fi
-          echo "✅ Config file permissions OK"
-
-  # ============================================================
-  # JOB 5 — Python linting (scripts/)
-  # ============================================================
-  python-lint:
-    name: Python Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install ruff
-        run: pip install ruff
-
-      - name: Run ruff on Python scripts
+      - name: Shells start cleanly
         run: |
-          # Submodules (kitty/tokyo_theme, tools) are vendored dependencies
-          # with their own repos/CI — only lint this repo's own scripts.
-          PY_FILES=$(find . \
-            -not -path './.git/*' \
-            -not -path './kitty/tokyo_theme/*' \
-            -not -path './tools/*' \
-            -name "*.py" | sort)
+          zsh -c 'exit'  || { echo "❌ non-interactive zsh failed"; exit 1; }
+          out=$(zsh -i -c 'echo READY' 2>/dev/null)
+          test "$out" = "READY" || { echo "❌ interactive zsh polluted stdout: [$out]"; exit 1; }
+          # 2>/dev/null: a container has no controlling tty, so interactive bash
+          # warns about job control. Harmless here and not what we're testing.
+          bash -i -c 'exit' 2>/dev/null || { echo "❌ interactive bash failed"; exit 1; }
+          echo "✅ zsh and bash start clean"
 
-          if [[ -z "$PY_FILES" ]]; then
-            echo "No Python files found."
-            exit 0
-          fi
-
-          echo "--- Python files ---"
-          echo "$PY_FILES"
-          echo ""
-          ruff check $PY_FILES
-
-  # ============================================================
-  # JOB 6 — Broken symlinks
-  # ============================================================
-  symlinks:
-    name: Broken Symlinks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Find broken symlinks
+      - name: Zsh history is actually configured
         run: |
-          BROKEN=$(find . -not -path './.git/*' -type l ! -exec test -e {} \; -print)
-          if [[ -n "$BROKEN" ]]; then
-            echo "❌ Broken symlinks found:"
-            echo "$BROKEN"
-            exit 1
-          fi
-          echo "✅ No broken symlinks"
+          eval "$(zsh -i -c 'printf "H=%s\nS=%s\n" "$HISTFILE" "$SAVEHIST"' 2>/dev/null)"
+          test -n "$H" || { echo "❌ HISTFILE unset — history would not persist"; exit 1; }
+          test "${S:-0}" -gt 0 || { echo "❌ SAVEHIST is 0 — history would not persist"; exit 1; }
+          test -d "$(dirname "$H")" || { echo "❌ history dir missing: $(dirname "$H")"; exit 1; }
+          echo "✅ HISTFILE=$H SAVEHIST=$S"
 
-  # ============================================================
-  # JOB 7 — Markdown lint
-  # ============================================================
-  markdown:
-    name: Markdown Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install markdownlint-cli
-        run: npm install -g markdownlint-cli
-
-      - name: Run markdownlint
+      - name: Referenced include paths resolve
         run: |
-          MD_FILES=$(find . -not -path './.git/*' -not -path '*/node_modules/*' -name "*.md" | sort)
+          # kitty is not installed in this container, so the installer skips it —
+          # but the theme include inside kitty.conf must still point at a real file.
+          inc=$(sed -n 's|^include ~/dotfiles/||p' kitty/kitty.conf)
+          test -f "$inc" || { echo "❌ kitty include does not resolve: $inc"; exit 1; }
+          echo "✅ kitty include resolves: $inc"
 
-          if [[ -z "$MD_FILES" ]]; then
-            echo "No Markdown files found."
-            exit 0
+      - name: Re-running is idempotent
+        run: |
+          ./install.sh --no-conda | tee /tmp/second.log
+          if grep -q '^\[info\]  backup' /tmp/second.log; then
+            echo "❌ second run backed files up — not idempotent"; exit 1
           fi
-
-          # MD013 = line length — disabled (common in technical docs)
-          # MD033 = inline HTML — disabled (used in README tables)
-          markdownlint \
-            --disable MD013 MD033 \
-            $MD_FILES
+          echo "✅ second run made no changes"
 
   # ============================================================
-  # JOB 8 — Secret scanning (Gitleaks)
-  # Runs AFTER all other checks and blocks the commit if secrets
-  # are detected anywhere in the repository history.
+  # JOB 4 — Secret scanning over the full history.
+  # pre-commit's gitleaks hook only sees the working tree; this
+  # scans every commit. Runs even if earlier jobs failed.
   # ============================================================
   gitleaks:
     name: Secret Scanning (Gitleaks)
     runs-on: ubuntu-latest
-    needs:
-      - required-files
-      - submodules
-      - shellcheck
-      - permissions
-      - python-lint
-      - symlinks
-      - markdown
-    # Run even if upstream jobs failed — secrets must always be caught
+    # SARIF upload writes to the Security → Code scanning tab.
+    permissions:
+      contents: read
+      security-events: write
+    needs: [lint, structure, install-smoke]
     if: always()
     steps:
       - name: Checkout (full history + submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           # Full history so gitleaks can scan every commit, not just HEAD
           fetch-depth: 0
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Set to your repo's secret if you have a paid Gitleaks licence:
+          # Required only for org-owned repos; free key from gitleaks.io.
           # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
       # Upload the SARIF report so findings appear in the
       # GitHub Security → Code scanning tab (free for public repos)
       - name: Upload SARIF report
         if: failure()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
         continue-on-error: true   # don't mask the gitleaks failure
@@ -370,15 +271,7 @@ jobs:
   # ============================================================
   integrity-pass:
     name: All Checks Passed
-    needs:
-      - required-files
-      - submodules
-      - shellcheck
-      - permissions
-      - python-lint
-      - symlinks
-      - markdown
-      - gitleaks
+    needs: [lint, structure, install-smoke, gitleaks]
     runs-on: ubuntu-latest
     if: always()
     steps:

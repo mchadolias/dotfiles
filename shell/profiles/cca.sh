@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ============================================================================
 # CC-IN2P3 Lyon site profile.
 # Merged from the original cluster_lyon.sh + the user-section of
@@ -36,7 +37,7 @@ esac
  if [ -r /afs/in2p3.fr/common/uss/system_profile ];then
      . /afs/in2p3.fr/common/uss/system_profile
   fi
- 
+
   if [ -n "$THRONG_DIR" ];then
      if [ -r $THRONG_DIR/group_profile ];then
         . $THRONG_DIR/group_profile

@@ -7,16 +7,26 @@
 # Override CONDA_HOME / KM3NeT_CVMFS per-site before sourcing.
 # ============================================================================
 
-_conda_guard_work() {
-	[ -n "${WORK:-}" ] && return 0
-	echo "conda-loaders: \$WORK is unset — ignoring \${WORK}-based dirs from ~/.condarc." >&2
+# ~/.condarc intentionally lists only the local miniforge dirs, because conda
+# leaves an *unset* ${WORK} as literal text and resolves it against $PWD. The
+# shared cluster dirs are set here instead, where the shell expands $WORK.
+#
+# Separators differ per variable (verified against conda 26.1):
+#   CONDA_ENVS_PATH  -> ":"  (legacy path-style list)
+#   CONDA_PKGS_DIRS  -> ","  (sequence-style list)
+_conda_site_dirs() {
 	local root="${CONDA_HOME:-$HOME/tools/miniforge3}"
-	export CONDA_ENVS_PATH="$root/envs"
-	export CONDA_PKGS_DIRS="$root/pkgs"
+	if [ -n "${WORK:-}" ]; then
+		export CONDA_ENVS_PATH="$WORK/software/private/conda/envs:$root/envs"
+		export CONDA_PKGS_DIRS="$WORK/software/private/conda/pkgs,$root/pkgs"
+	else
+		export CONDA_ENVS_PATH="$root/envs"
+		export CONDA_PKGS_DIRS="$root/pkgs"
+	fi
 }
 
 load_conda() {
-	_conda_guard_work
+	_conda_site_dirs
 	# Already initialised? nothing to do.
 	if [ -n "${CONDA_SHLVL:-}" ] && command -v conda >/dev/null 2>&1; then
 		return 0
@@ -48,12 +58,37 @@ load_conda() {
 }
 
 load_micromamba() {
-	_conda_guard_work
+	_conda_site_dirs
 	local cvmfs="${KM3NeT_CVMFS:-/cvmfs/km3net.egi.eu}"
 	if [ -f "$cvmfs/micromamba/micromamba_x86.sh" ]; then
 		# shellcheck disable=SC1091
 		. "$cvmfs/micromamba/micromamba_x86.sh"
 		echo "Micromamba environment loaded from CVMFS."
+
+		# The km3net hook only defines `micromamba` as a shell function, which is
+		# invisible to non-interactive subshells (every `make`/script recipe line
+		# spawns a fresh one). Recover the real binary from the function body and
+		# export it, so non-interactive tools can call micromamba directly.
+		if [ -z "${MAMBA_EXE:-}" ]; then
+			local body exe
+			if [ -n "${ZSH_VERSION:-}" ]; then
+				body="$(functions micromamba 2>/dev/null)"
+			else
+				body="$(declare -f micromamba 2>/dev/null)"
+			fi
+			exe="$(printf '%s' "$body" | grep -oE "/[^[:space:]'\"]*micromamba[^[:space:]'\"]*" | head -n1)"
+			[ -n "$exe" ] && [ -x "$exe" ] && export MAMBA_EXE="$exe"
+		fi
+		if [ -n "${MAMBA_EXE:-}" ]; then
+			local exe_dir
+			exe_dir="$(dirname "$MAMBA_EXE")"
+			case ":$PATH:" in
+				*":$exe_dir:"*) : ;;
+				*) export PATH="$exe_dir:$PATH" ;;
+			esac
+		else
+			echo "load_micromamba: could not locate the micromamba binary for PATH/MAMBA_EXE; make and other non-interactive tools may not find it." >&2
+		fi
 	else
 		echo "Micromamba script not found at $cvmfs/micromamba/micromamba_x86.sh." >&2
 	fi
